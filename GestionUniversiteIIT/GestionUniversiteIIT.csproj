@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GestionUniversiteIIT</RootNamespace>
+    <AssemblyName>GestionUniversiteIIT</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="App.config" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\logo.png" Link="Resources\logo.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\logo.png')" />
+  </ItemGroup>
+</Project>
