@@ -5,37 +5,26 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmAjouterInscription : Form
+public sealed partial class FrmAjouterInscription : Form
 {
     private readonly Action? _retour;
-    private readonly TextBox _matricule = new() { Text = "IIT0015" };
-    private readonly TextBox _nom = new();
-    private readonly TextBox _prenoms = new();
-    private readonly TextBox _dateNaissance = new() { PlaceholderText = "jj/mm/aaaa" };
-    private readonly DateTimePicker _datePickerCache = new() { Format = DateTimePickerFormat.Short, Visible = false };
-    private readonly ComboBox _sexe = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _filiere = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _niveau = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _annee = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly PanneauPhotoEtudiant _photoBox = new();
     private string? _cheminPhoto;
 
-    public FrmAjouterInscription(Action? retour = null)
+    public FrmAjouterInscription() : this(null) { }
+
+    public FrmAjouterInscription(Action? retour)
     {
         _retour = retour;
+        InitializeComponent();
         ConstruireInterface();
-        ChargerListes();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            ChargerListes();
+        }
     }
 
     private void ConstruireInterface()
     {
-        Text = "Nouvelle Inscription";
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        DoubleBuffered = true;
-
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -47,10 +36,8 @@ public sealed class FrmAjouterInscription : Form
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        // 1. En-tête "Nouvelle Inscription" avec icône rouge
         root.Controls.Add(UiStyle.EntetePage(IconeMenu.Etudiants, "Nouvelle Inscription"), 0, 0);
 
-        // 2. Carte principale arrondie "Informations de l'étudiant"
         var card = new PanneauArrondi
         {
             Dock = DockStyle.Fill,
@@ -80,7 +67,6 @@ public sealed class FrmAjouterInscription : Form
             Margin = new Padding(2, 2, 2, 8)
         }, 0, 0);
 
-        // Corps à 3 colonnes + séparateur vertical comme sur 04_formulaire_inscription.png
         var body = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -93,7 +79,6 @@ public sealed class FrmAjouterInscription : Form
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
 
-        // Colonne gauche : Matricule, Nom *, Prénoms *, Date de naissance, Sexe
         var leftForm = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -116,7 +101,6 @@ public sealed class FrmAjouterInscription : Form
 
         body.Controls.Add(leftForm, 0, 0);
 
-        // Séparateur vertical gris clair
         var separator = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
         separator.Paint += (_, e) =>
         {
@@ -125,7 +109,6 @@ public sealed class FrmAjouterInscription : Form
         };
         body.Controls.Add(separator, 1, 0);
 
-        // Colonne centrale : Filière *, Niveau *, Année académique *
         var middleForm = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -149,7 +132,6 @@ public sealed class FrmAjouterInscription : Form
 
         body.Controls.Add(middleForm, 2, 0);
 
-        // Colonne droite : Cadre Photo + Bouton "Choisir une photo"
         var rightPhoto = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -171,7 +153,6 @@ public sealed class FrmAjouterInscription : Form
 
         cardGrid.Controls.Add(body, 0, 1);
 
-        // Bas à droite : boutons "Enregistrer" (rouge) et "Annuler" (ardoise)
         var actionsPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -202,6 +183,7 @@ public sealed class FrmAjouterInscription : Form
         root.Controls.Add(card, 0, 1);
         Controls.Add(root);
     }
+
 
     private static void AjouterLigneGauche(TableLayoutPanel table, int row, string texte, bool oblig, Control champ)
     {

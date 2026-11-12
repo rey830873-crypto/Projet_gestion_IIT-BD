@@ -3,33 +3,31 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public class FrmEditionCatalogue : Form
+public partial class FrmEditionCatalogue : Form
 {
     private readonly CatalogueService _service;
     private readonly DefinitionCatalogue _definition;
     private readonly int? _id;
     private readonly Dictionary<string, Control> _controles = new(StringComparer.Ordinal);
 
+    public FrmEditionCatalogue() : this(new CatalogueService(), new CatalogueService().GetDefinition("Etudiants")) { }
+
     public FrmEditionCatalogue(CatalogueService service, DefinitionCatalogue definition, int? id = null)
     {
         _service = service;
         _definition = definition;
         _id = id;
+        InitializeComponent();
         ConstruireInterface();
-        ChargerValeurs();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            ChargerValeurs();
+        }
     }
 
     private void ConstruireInterface()
     {
         Text = _id.HasValue ? $"Modifier — {_definition.Titre}" : $"Ajouter — {_definition.Titre}";
-        StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        ShowInTaskbar = false;
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        MinimumSize = new Size(490, 260);
         ClientSize = new Size(540, Math.Min(760, 165 + _definition.Champs.Count * 58));
 
         var root = new TableLayoutPanel
@@ -85,6 +83,7 @@ public class FrmEditionCatalogue : Form
         root.SetColumnSpan(actions, 2);
         Controls.Add(root);
     }
+
 
     private Control CreerControle(ChampCatalogue champ)
     {

@@ -3,35 +3,30 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmInscriptions : Form
+public sealed partial class FrmInscriptions : Form
 {
     private readonly CatalogueService _service = new();
     private readonly DefinitionCatalogue _definition;
     private readonly Action? _ouvrirNouvelleInscription;
-    private readonly DataGridView _grille = new();
-    private readonly ComboBox _annee = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly Label _lblTotal = new();
-    private TextBox _recherche = null!;
     private DataTable? _donnees;
     private int _pageCourante = 1;
 
-    public FrmInscriptions(Action? ouvrirNouvelleInscription = null)
+    public FrmInscriptions() : this(null) { }
+
+    public FrmInscriptions(Action? ouvrirNouvelleInscription)
     {
         _ouvrirNouvelleInscription = ouvrirNouvelleInscription;
         _definition = _service.GetDefinition("Inscriptions");
+        InitializeComponent();
         ConstruireInterface();
-        Recharger();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            Recharger();
+        }
     }
 
     private void ConstruireInterface()
     {
-        Text = "Inscriptions";
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        DoubleBuffered = true;
-
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -45,7 +40,6 @@ public sealed class FrmInscriptions : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
 
-        // 1. En-tête "Inscriptions" avec badge rouge
         var entete = UiStyle.EntetePage(IconeMenu.Inscriptions, "Inscriptions");
         if (_ouvrirNouvelleInscription is not null)
         {
@@ -54,7 +48,6 @@ public sealed class FrmInscriptions : Form
 
         root.Controls.Add(entete, 0, 0);
 
-        // 2. Barre d'outils : "Rechercher une inscription..." à gauche + "Année : [2026 - 2027]" à droite (05_liste_inscriptions.png)
         var toolbar = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
         var searchBox = UiStyle.ChampRecherche("Rechercher une inscription...", 430, out _recherche);
         searchBox.Location = new Point(2, 4);
@@ -90,7 +83,6 @@ public sealed class FrmInscriptions : Form
 
         root.Controls.Add(toolbar, 0, 1);
 
-        // 3. Grille des inscriptions avec colonnes N°, Étudiant, Filière, Niveau, Date inscription, Actions
         UiStyle.ConfigurerGrille(_grille);
         _grille.Dock = DockStyle.Fill;
         _grille.AutoGenerateColumns = true;
@@ -127,7 +119,6 @@ public sealed class FrmInscriptions : Form
         card.Controls.Add(_grille);
         root.Controls.Add(card, 0, 2);
 
-        // 4. Pied de page : "Total : 1 226 inscriptions" + Bouton Imprimer/Exporter + Pagination "< 1 2 3 ... 62 >"
         var footer = UiStyle.CreerPiedPagination(_lblTotal, 62, page =>
         {
             _pageCourante = page;
@@ -153,6 +144,7 @@ public sealed class FrmInscriptions : Form
 
         Controls.Add(root);
     }
+
 
     private void Recharger()
     {

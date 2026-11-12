@@ -2,7 +2,7 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmAjouterEtudiant : FrmEditionCatalogue
+public sealed partial class FrmAjouterEtudiant : FrmEditionCatalogue
 {
-    public FrmAjouterEtudiant() : base(new CatalogueService(), new CatalogueService().GetDefinition("Etudiants")) { }
+    public FrmAjouterEtudiant() : base(new CatalogueService(), new CatalogueService().GetDefinition("Etudiants")) { InitializeComponent(); }
 }

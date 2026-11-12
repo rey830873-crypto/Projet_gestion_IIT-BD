@@ -5,37 +5,23 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmParametres : Form
+public sealed partial class FrmParametres : Form
 {
     private readonly string _utilisateur;
     private readonly AuthService _auth = new();
     private readonly CatalogueService _catalogue = new();
 
-    private readonly TextBox _txtServeur = new() { ReadOnly = true };
-    private readonly TextBox _txtBase = new() { ReadOnly = true };
-    private readonly Label _lblStatutConnexion = new();
-
-    private readonly DataGridView _gridFilieres = new();
-    private readonly TextBox _txtNouvelleFiliere = new();
-
-    private readonly TextBox _txtNouveauMdp = new();
-    private readonly TextBox _txtConfirmerMdp = new();
-
-    private readonly TextBox _txtNouvelUtilisateur = new();
-    private readonly ComboBox _cboRoleUtilisateur = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _txtMdpUtilisateur = new();
+    public FrmParametres() : this("Concepteur") { }
 
     public FrmParametres(string utilisateur)
     {
         _utilisateur = utilisateur;
-        Text = "Paramètres";
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        BackColor = Color.White;
-        DoubleBuffered = true;
-
+        InitializeComponent();
         ConstruireInterface();
-        ChargerDonnees();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            ChargerDonnees();
+        }
     }
 
     private void ConstruireInterface()
@@ -67,76 +53,183 @@ public sealed class FrmParametres : Form
         Controls.Add(root);
     }
 
+
     private TabPage CreerOngletConnexion()
     {
         var page = new TabPage("Base de données & Connexion")
         {
             BackColor = Color.White,
-            Padding = new Padding(20)
+            Padding = new Padding(16)
         };
+
+        var split = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1
+        };
+        split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
+        split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+
+        // Colonne gauche : vrais paramètres de connexion SQL Server
+        var cardParams = UiStyle.CarteArrondie();
+        cardParams.Padding = new Padding(18);
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 6,
-            Padding = new Padding(12)
+            RowCount = 9
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 185));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 8; i++)
         {
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         }
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         layout.Controls.Add(CreerLabelTitre("Serveur SQL :"), 0, 0);
         _txtServeur.Dock = DockStyle.Fill;
         _txtServeur.Font = new Font("Segoe UI", 10f);
-        layout.Controls.Add(UiStyle.EncadrerChamp(_txtServeur, 340, 36), 1, 0);
+        _txtServeur.PlaceholderText = "ex: ., 127.0.0.1, .\\SQLEXPRESS";
+        layout.Controls.Add(UiStyle.EncadrerChamp(_txtServeur, 340, 34), 1, 0);
 
         layout.Controls.Add(CreerLabelTitre("Base de données :"), 0, 1);
         _txtBase.Dock = DockStyle.Fill;
         _txtBase.Font = new Font("Segoe UI", 10f);
-        layout.Controls.Add(UiStyle.EncadrerChamp(_txtBase, 340, 36), 1, 1);
+        _txtBase.PlaceholderText = "ex: GestionUniversiteIIT";
+        layout.Controls.Add(UiStyle.EncadrerChamp(_txtBase, 340, 34), 1, 1);
 
-        layout.Controls.Add(CreerLabelTitre("Statut de connexion :"), 0, 2);
+        layout.Controls.Add(CreerLabelTitre("Authentification :"), 0, 2);
+        _cboAuth.Items.Clear();
+        _cboAuth.Items.AddRange(["Authentification Windows (Intégrée)", "Authentification SQL Server"]);
+        _cboAuth.SelectedIndex = 0;
+        _cboAuth.Font = new Font("Segoe UI", 9.5f);
+        _cboAuth.Width = 340;
+        _cboAuth.Anchor = AnchorStyles.Left;
+        _cboAuth.SelectedIndexChanged += (_, _) => BasculerModeAuth();
+        layout.Controls.Add(_cboAuth, 1, 2);
+
+        layout.Controls.Add(CreerLabelTitre("Identifiant SQL :"), 0, 3);
+        _txtUserSql.Dock = DockStyle.Fill;
+        _txtUserSql.Font = new Font("Segoe UI", 10f);
+        _txtUserSql.PlaceholderText = "ex: sa (si SQL Auth)";
+        layout.Controls.Add(UiStyle.EncadrerChamp(_txtUserSql, 340, 34), 1, 3);
+
+        layout.Controls.Add(CreerLabelTitre("Mot de passe SQL :"), 0, 4);
+        _txtPassSql.Dock = DockStyle.Fill;
+        _txtPassSql.Font = new Font("Segoe UI", 10f);
+        _txtPassSql.PlaceholderText = "Mot de passe SQL Server";
+        layout.Controls.Add(UiStyle.EncadrerChamp(_txtPassSql, 340, 34), 1, 4);
+
+        layout.Controls.Add(CreerLabelTitre("Options SSL :"), 0, 5);
+        var pnlSsl = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            Padding = new Padding(0, 8, 0, 0)
+        };
+        _chkEncrypt.Font = new Font("Segoe UI", 9f);
+        _chkTrustCert.Font = new Font("Segoe UI", 9f);
+        pnlSsl.Controls.Add(_chkEncrypt);
+        pnlSsl.Controls.Add(_chkTrustCert);
+        layout.Controls.Add(pnlSsl, 1, 5);
+
+        layout.Controls.Add(CreerLabelTitre("Signal de connexion :"), 0, 6);
+        var pnlSignal = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(0, 10, 0, 0)
+        };
+        _pnlPastilleSignal.Margin = new Padding(0, 3, 8, 0);
+        _pnlPastilleSignal.Paint += (_, e) =>
+        {
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var couleur = Connexion.EstConnecte switch
+            {
+                true => Color.FromArgb(24, 158, 62),
+                false => UiStyle.Rouge,
+                _ => Color.FromArgb(217, 119, 6)
+            };
+            using var brush = new SolidBrush(couleur);
+            e.Graphics.FillEllipse(brush, 1, 1, 11, 11);
+        };
         _lblStatutConnexion.AutoSize = true;
-        _lblStatutConnexion.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+        _lblStatutConnexion.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
         _lblStatutConnexion.ForeColor = UiStyle.Gris;
-        _lblStatutConnexion.Anchor = AnchorStyles.Left;
-        _lblStatutConnexion.Text = "Non vérifié";
-        layout.Controls.Add(_lblStatutConnexion, 1, 2);
+        _lblStatutConnexion.Text = "Vérification en cours...";
+        pnlSignal.Controls.Add(_pnlPastilleSignal);
+        pnlSignal.Controls.Add(_lblStatutConnexion);
+        layout.Controls.Add(pnlSignal, 1, 6);
 
         var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            AutoSize = true,
-            WrapContents = false,
-            Margin = new Padding(0, 8, 0, 8)
+            WrapContents = true,
+            Padding = new Padding(0, 4, 0, 0)
         };
 
-        var btnTester = UiStyle.Bouton("Tester la connexion SQL", true);
+        var btnTester = UiStyle.Bouton("Tester la connexion", true);
+        btnTester.Size = new Size(175, 38);
         btnTester.Click += (_, _) => TesterConnexion();
 
-        var btnReinitialiser = UiStyle.BoutonArdoise("Réinitialiser données démo", 220, 38);
-        btnReinitialiser.Click += (_, _) => ReinitialiserDemo();
+        var btnEnregistrer = UiStyle.Bouton("Enregistrer & Appliquer", true);
+        btnEnregistrer.Size = new Size(195, 38);
+        btnEnregistrer.BackColor = Color.FromArgb(24, 134, 48);
+        btnEnregistrer.ForeColor = Color.White;
+        btnEnregistrer.Click += (_, _) => EnregistrerEtAppliquerConnexion();
 
         actions.Controls.Add(btnTester);
-        actions.Controls.Add(btnReinitialiser);
-        layout.Controls.Add(actions, 1, 3);
+        actions.Controls.Add(btnEnregistrer);
+        layout.Controls.Add(actions, 1, 7);
 
-        var lblAide = new Label
+        cardParams.Controls.Add(layout);
+        split.Controls.Add(cardParams, 0, 0);
+
+        // Colonne droite : état interactif des tables SQL Server
+        var cardEtat = UiStyle.CarteArrondie();
+        cardEtat.Padding = new Padding(16);
+        cardEtat.Margin = new Padding(14, 0, 0, 0);
+
+        var etatLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Text = "Pour basculer d'une instance SQL locale à un serveur distant, modifiez la chaîne de connexion dans 'App.config' et relancez l'application.",
-            ForeColor = UiStyle.Gris,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Italic)
+            ColumnCount = 1,
+            RowCount = 3
         };
-        layout.Controls.Add(lblAide, 1, 4);
+        etatLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        etatLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        etatLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
 
-        page.Controls.Add(layout);
+        var lblTitreEtat = new Label
+        {
+            Text = "État en direct des tables SQL Server",
+            Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            ForeColor = UiStyle.Texte,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        etatLayout.Controls.Add(lblTitreEtat, 0, 0);
+
+        UiStyle.ConfigurerGrille(_gridEtatTables);
+        _gridEtatTables.Dock = DockStyle.Fill;
+        _gridEtatTables.AutoGenerateColumns = true;
+        etatLayout.Controls.Add(_gridEtatTables, 0, 1);
+
+        var btnActualiserTables = UiStyle.BoutonArdoise("Actualiser l'état des tables", 220, 36);
+        btnActualiserTables.Anchor = AnchorStyles.Left;
+        btnActualiserTables.Click += (_, _) => ActualiserEtatTables();
+        etatLayout.Controls.Add(btnActualiserTables, 0, 2);
+
+        cardEtat.Controls.Add(etatLayout);
+        split.Controls.Add(cardEtat, 1, 0);
+
+        page.Controls.Add(split);
         return page;
     }
 
@@ -300,14 +393,62 @@ public sealed class FrmParametres : Form
             var builder = new SqlConnectionStringBuilder(Connexion.ConnectionString);
             _txtServeur.Text = builder.DataSource;
             _txtBase.Text = builder.InitialCatalog;
+            _cboAuth.SelectedIndex = builder.IntegratedSecurity ? 0 : 1;
+            _txtUserSql.Text = builder.UserID;
+            _txtPassSql.Text = builder.Password;
+            _chkEncrypt.Checked = builder.Encrypt != SqlConnectionEncryptOption.Optional;
+            _chkTrustCert.Checked = builder.TrustServerCertificate;
         }
         catch
         {
-            _txtServeur.Text = ".\\SQLEXPRESS";
+            _txtServeur.Text = ".";
             _txtBase.Text = "GestionUniversiteIIT";
+            _cboAuth.SelectedIndex = 0;
         }
 
+        BasculerModeAuth();
+        TesterConnexionSilencieux();
+        ActualiserEtatTables();
         RechargerFilieres();
+    }
+
+    private void BasculerModeAuth()
+    {
+        bool sqlAuth = _cboAuth.SelectedIndex == 1;
+        _txtUserSql.Enabled = sqlAuth;
+        _txtPassSql.Enabled = sqlAuth;
+    }
+
+    private string ConstruireChaineDepuisFormulaire()
+    {
+        return Connexion.ConstruireChaine(
+            _txtServeur.Text,
+            _txtBase.Text,
+            _cboAuth.SelectedIndex == 0,
+            _txtUserSql.Text,
+            _txtPassSql.Text,
+            _chkEncrypt.Checked,
+            _chkTrustCert.Checked);
+    }
+
+    private void MettreAJourSignalConnexion(bool? connecte, string texte)
+    {
+        _lblStatutConnexion.Text = texte;
+        _lblStatutConnexion.ForeColor = connecte switch
+        {
+            true => Color.FromArgb(24, 134, 48),
+            false => UiStyle.Rouge,
+            _ => UiStyle.Gris
+        };
+        _pnlPastilleSignal.Invalidate();
+    }
+
+    private void TesterConnexionSilencieux()
+    {
+        var res = Connexion.TesterConnexion();
+        MettreAJourSignalConnexion(res.Succes, res.Succes
+            ? $"Connecté à {_txtBase.Text.Trim()} — SQL {res.VersionServeur} ({res.LatenceMs} ms)"
+            : res.Message);
     }
 
     private void RechargerFilieres()
@@ -329,29 +470,108 @@ public sealed class FrmParametres : Form
 
     private void TesterConnexion()
     {
-        try
+        if (string.IsNullOrWhiteSpace(_txtServeur.Text) || string.IsNullOrWhiteSpace(_txtBase.Text))
         {
-            using var con = Connexion.Create();
-            con.Open();
-            _lblStatutConnexion.Text = "Connecté à SQL Server (Succès)";
-            _lblStatutConnexion.ForeColor = Color.FromArgb(24, 134, 48);
-            MessageBox.Show("La connexion à SQL Server est opérationnelle !", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Renseignez le serveur SQL et le nom de la base de données.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
         }
-        catch (Exception ex)
+
+        string candidate = ConstruireChaineDepuisFormulaire();
+        var res = Connexion.TesterConnexion(candidate);
+        MettreAJourSignalConnexion(res.Succes, res.Succes
+            ? $"Connecté à {_txtBase.Text.Trim()} — SQL {res.VersionServeur} ({res.LatenceMs} ms)"
+            : res.Message);
+
+        if (res.Succes)
         {
-            _lblStatutConnexion.Text = "Mode Démo / Hors-ligne (SQL indisponible)";
-            _lblStatutConnexion.ForeColor = UiStyle.Rouge;
-            MessageBox.Show($"Impossible de se connecter à SQL Server : {ex.Message}\n\nL'application tourne en mode Démo automatique avec les données des maquettes.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show($"Connexion SQL Server réussie !\nServeur : {_txtServeur.Text.Trim()}\nBase : {_txtBase.Text.Trim()}\nVersion : {res.VersionServeur}\nLatence : {res.LatenceMs} ms",
+                "Connexion réussie", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        else
+        {
+            MessageBox.Show($"Échec de connexion à SQL Server :\n{res.Message}",
+                "Erreur de connexion", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 
-    private void ReinitialiserDemo()
+    private void EnregistrerEtAppliquerConnexion()
     {
-        if (MessageBox.Show("Voulez-vous réinitialiser toutes les données de secours en mémoire aux valeurs exactes des maquettes ?", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+        if (string.IsNullOrWhiteSpace(_txtServeur.Text) || string.IsNullOrWhiteSpace(_txtBase.Text))
         {
-            CatalogueService.ReinitialiserDonneesSecours();
+            MessageBox.Show("Le serveur SQL et la base de données sont obligatoires.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        string candidate = ConstruireChaineDepuisFormulaire();
+        var test = Connexion.TesterConnexion(candidate);
+        if (!test.Succes)
+        {
+            var choix = MessageBox.Show(
+                $"Le test de connexion a échoué :\n{test.Message}\n\nVoulez-vous tout de même enregistrer ces paramètres ?",
+                "Connexion non vérifiée",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+            if (choix != DialogResult.Yes)
+            {
+                return;
+            }
+        }
+
+        try
+        {
+            Connexion.SauvegarderEtAppliquer(
+                _txtServeur.Text,
+                _txtBase.Text,
+                _cboAuth.SelectedIndex == 0,
+                _txtUserSql.Text,
+                _txtPassSql.Text,
+                _chkEncrypt.Checked,
+                _chkTrustCert.Checked);
+
+            DbHelper.ReinitialiserDelaiReessai();
+            TesterConnexionSilencieux();
+            ActualiserEtatTables();
             RechargerFilieres();
-            MessageBox.Show("Les données de démonstration ont été réinitialisées.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            MessageBox.Show("Paramètres SQL Server enregistrés et appliqués immédiatement.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Impossible d'enregistrer la configuration : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void ActualiserEtatTables()
+    {
+        var table = new DataTable();
+        table.Columns.Add("Table SQL", typeof(string));
+        table.Columns.Add("Lignes", typeof(string));
+
+        string[] tables = ["Filieres", "Etudiants", "Enseignants", "Cours", "Salles", "Inscriptions", "Plannings", "Absences", "Utilisateurs"];
+        try
+        {
+            using var con = Connexion.Create(ConstruireChaineDepuisFormulaire());
+            con.Open();
+            foreach (var nom in tables)
+            {
+                using var cmd = new SqlCommand($"SELECT COUNT(*) FROM dbo.[{nom}]", con) { CommandTimeout = 5 };
+                object? val = cmd.ExecuteScalar();
+                table.Rows.Add(nom, Convert.ToInt32(val ?? 0).ToString("N0"));
+            }
+        }
+        catch
+        {
+            foreach (var nom in tables)
+            {
+                table.Rows.Add(nom, "Indisponible");
+            }
+        }
+
+        _gridEtatTables.DataSource = table;
+        if (_gridEtatTables.Columns.Contains("Lignes"))
+        {
+            _gridEtatTables.Columns["Lignes"]!.FillWeight = 35;
+            _gridEtatTables.Columns["Lignes"]!.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
     }
 

@@ -56,6 +56,18 @@ BEGIN
 END;
 GO
 
+-- Preserve a pre-existing legacy course table whose columns do not match this app.
+-- Keep its data under a different name, then create the current app schema below.
+IF OBJECT_ID(N'dbo.Cours', N'U') IS NOT NULL
+   AND COL_LENGTH(N'dbo.Cours', N'CoursId') IS NULL
+BEGIN
+    IF OBJECT_ID(N'dbo.Cours_Legacy', N'U') IS NOT NULL
+        THROW 50001, 'dbo.Cours_Legacy already exists; inspect both course tables before migrating.', 1;
+
+    EXEC sys.sp_rename N'dbo.Cours', N'Cours_Legacy';
+END;
+GO
+
 IF OBJECT_ID(N'dbo.Cours', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Cours

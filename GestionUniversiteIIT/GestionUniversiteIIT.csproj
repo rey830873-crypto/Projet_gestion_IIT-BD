@@ -17,4 +17,38 @@
     <None Update="App.config" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\logo.png" Link="Resources\logo.png" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\logo.png')" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Forms\FrmAccueil.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmAccueil.Designer.cs"><DependentUpon>FrmAccueil.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmAjouterEtudiant.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmAjouterEtudiant.Designer.cs"><DependentUpon>FrmAjouterEtudiant.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmAjouterInscription.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmAjouterInscription.Designer.cs"><DependentUpon>FrmAjouterInscription.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmCatalogue.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmCatalogue.Designer.cs"><DependentUpon>FrmCatalogue.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmConnexion.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmConnexion.Designer.cs"><DependentUpon>FrmConnexion.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmCours.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmCours.Designer.cs"><DependentUpon>FrmCours.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmEditionCatalogue.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmEditionCatalogue.Designer.cs"><DependentUpon>FrmEditionCatalogue.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmEnseignants.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmEnseignants.Designer.cs"><DependentUpon>FrmEnseignants.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmEtudiants.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmEtudiants.Designer.cs"><DependentUpon>FrmEtudiants.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmHistoriqueAbsences.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmHistoriqueAbsences.Designer.cs"><DependentUpon>FrmHistoriqueAbsences.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmInscriptions.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmInscriptions.Designer.cs"><DependentUpon>FrmInscriptions.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmParametres.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmParametres.Designer.cs"><DependentUpon>FrmParametres.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmPlanning.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmPlanning.Designer.cs"><DependentUpon>FrmPlanning.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmSaisieAbsences.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmSaisieAbsences.Designer.cs"><DependentUpon>FrmSaisieAbsences.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmSalles.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmSalles.Designer.cs"><DependentUpon>FrmSalles.cs</DependentUpon></Compile>
+    <Compile Update="Forms\FrmStatistiques.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\FrmStatistiques.Designer.cs"><DependentUpon>FrmStatistiques.cs</DependentUpon></Compile>
+  </ItemGroup>
 </Project>

@@ -2,21 +2,17 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmStatistiques : Form
+public sealed partial class FrmStatistiques : Form
 {
     private readonly StatistiqueService _service = new();
 
     public FrmStatistiques()
     {
-        Text = "Statistiques";
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        BackColor = Color.White;
-        DoubleBuffered = true;
-        Charger();
+        InitializeComponent();
+        ConstruireInterface();
     }
 
-    private void Charger()
+    private void ConstruireInterface()
     {
         var root = new TableLayoutPanel
         {
@@ -30,13 +26,12 @@ public sealed class FrmStatistiques : Form
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 118));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        // 1. En-tête "Statistiques" avec icône rouge
         root.Controls.Add(UiStyle.EntetePage(IconeMenu.Rapports, "Statistiques"), 0, 0);
 
-        var stats = _service.Charger();
+        var stats = System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime
+            ? new Statistiques(1248, 1226, 37, 68, 92, 8, 412, 438, 376)
+            : _service.Charger();
 
-        // 2. Quatre cartes KPI colorées dans l'ordre exact de 12_statistiques_generales.png :
-        //    1 248 Étudiants (bleu) | 1 226 Inscriptions (rouge) | 37 Cours (vert) | 68 Enseignants (orange)
         var kpiRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -91,9 +86,6 @@ public sealed class FrmStatistiques : Form
 
         root.Controls.Add(kpiRow, 0, 1);
 
-        // 3. Deux graphiques côte à côte :
-        //    Gauche : "Taux de présence (ce mois)" (Camembert 92% / 8%)
-        //    Droite : "Inscriptions par niveau" (Histogramme L1=412, L2=438, L3=376)
         var chartsGrid = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -122,4 +114,5 @@ public sealed class FrmStatistiques : Form
 
         Controls.Add(root);
     }
+
 }

@@ -135,6 +135,7 @@ public sealed class AbsenceService
                 using var command = new SqlCommand(
                     "UPDATE dbo.Absences SET Present = @Present WHERE CoursId = @CoursId AND EtudiantId = @EtudiantId AND DateCours = @Date; IF @@ROWCOUNT = 0 INSERT dbo.Absences(CoursId, EtudiantId, DateCours, Present) VALUES(@CoursId, @EtudiantId, @Date, @Present);",
                     connection, transaction);
+                command.CommandTimeout = 5;
                 command.Parameters.Add("@Present", SqlDbType.Bit);
                 command.Parameters.Add("@CoursId", SqlDbType.Int).Value = coursId;
                 command.Parameters.Add("@EtudiantId", SqlDbType.Int);

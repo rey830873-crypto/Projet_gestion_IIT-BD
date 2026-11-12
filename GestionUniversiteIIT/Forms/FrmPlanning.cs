@@ -4,30 +4,23 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmPlanning : Form
+public sealed partial class FrmPlanning : Form
 {
     private readonly CatalogueService _service = new();
     private readonly DefinitionCatalogue _definition;
-    private readonly ComboBox _semaine = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _filiere = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly DataGridView _grille = new();
-
     public FrmPlanning()
     {
         _definition = _service.GetDefinition("Planning");
+        InitializeComponent();
         ConstruireInterface();
-        RechargerGrille();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            RechargerGrille();
+        }
     }
 
     private void ConstruireInterface()
     {
-        Text = "Planification des Cours";
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        DoubleBuffered = true;
-
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -41,10 +34,8 @@ public sealed class FrmPlanning : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
 
-        // 1. En-tête "Planification des Cours"
         root.Controls.Add(UiStyle.EntetePage(IconeMenu.Planification, "Planification des Cours"), 0, 0);
 
-        // 2. Filtres : "Semaine : [09 nov. – 15 nov. 2026]" à gauche et "Filière : [Génie Logiciel]" à droite
         var filterBar = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
 
         var leftGroup = new FlowLayoutPanel
@@ -91,6 +82,8 @@ public sealed class FrmPlanning : Form
             "Marketing",
             "Informatique",
             "Réseaux",
+            "Data Science & IA",
+            "Cybersécurité",
             "Toutes"
         ]);
         _filiere.SelectedIndex = 0;
@@ -102,13 +95,11 @@ public sealed class FrmPlanning : Form
 
         root.Controls.Add(filterBar, 0, 1);
 
-        // 3. Grille matricielle hebdomadaire (Heure | Lundi | Mardi | Mercredi | Jeudi | Vendredi)
         ConfigurerGrilleEmploiDuTemps();
         var card = UiStyle.CarteArrondie();
         card.Controls.Add(_grille);
         root.Controls.Add(card, 0, 2);
 
-        // 4. Boutons d'action en bas à gauche : "+ Nouvelle planification" (rouge) + "Exporter" (bleu foncé)
         var actionsBar = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -137,6 +128,7 @@ public sealed class FrmPlanning : Form
 
         Controls.Add(root);
     }
+
 
     private void ConfigurerGrilleEmploiDuTemps()
     {

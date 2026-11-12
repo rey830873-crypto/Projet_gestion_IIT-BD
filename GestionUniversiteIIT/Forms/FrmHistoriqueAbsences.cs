@@ -4,36 +4,31 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmHistoriqueAbsences : Form
+public sealed partial class FrmHistoriqueAbsences : Form
 {
     private readonly AbsenceService _service = new();
     private readonly Action? _ouvrirSaisie;
-    private readonly ComboBox _etudiant = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _periode = new() { Text = "01/10/2026 - 06/11/2026", ReadOnly = false };
-    private readonly DataGridView _grille = new();
-    private readonly Label _lblVide = new();
     private DataTable? _donnees;
     private int _pageCourante = 1;
     private DateTime _debut = new(2026, 10, 1);
     private DateTime _fin = new(2026, 11, 6);
 
-    public FrmHistoriqueAbsences(Action? ouvrirSaisie = null)
+    public FrmHistoriqueAbsences() : this(null) { }
+
+    public FrmHistoriqueAbsences(Action? ouvrirSaisie)
     {
         _ouvrirSaisie = ouvrirSaisie;
+        InitializeComponent();
         ConstruireInterface();
-        ChargerListeEtudiants();
-        Charger();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            ChargerListeEtudiants();
+            Charger();
+        }
     }
 
     private void ConstruireInterface()
     {
-        Text = "Historique des Absences";
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        DoubleBuffered = true;
-
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -47,7 +42,6 @@ public sealed class FrmHistoriqueAbsences : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
 
-        // 1. En-tête "Historique des Absences"
         var entete = UiStyle.EntetePage(IconeMenu.Absences, "Historique des Absences");
         if (_ouvrirSaisie is not null)
         {
@@ -56,7 +50,6 @@ public sealed class FrmHistoriqueAbsences : Form
 
         root.Controls.Add(entete, 0, 0);
 
-        // 2. Barre de filtres : "Étudiant : [Tous]" à gauche + "Période : [01/10/2026 - 06/11/2026 📅]" à droite (11_historique_absences.png)
         var filterBar = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
 
         var leftGroup = new FlowLayoutPanel
@@ -137,7 +130,6 @@ public sealed class FrmHistoriqueAbsences : Form
 
         root.Controls.Add(filterBar, 0, 1);
 
-        // 3. Grille : Date | Étudiant | Cours | Statut [badge rouge "Absent"]
         UiStyle.ConfigurerGrille(_grille);
         _grille.Dock = DockStyle.Fill;
         _grille.AutoGenerateColumns = true;
@@ -146,7 +138,6 @@ public sealed class FrmHistoriqueAbsences : Form
         card.Controls.Add(_grille);
         root.Controls.Add(card, 0, 2);
 
-        // 4. Pied de page avec bouton Imprimer/Exporter à gauche et pagination "< 1 2 >" à droite (11_historique_absences.png)
         var footer = UiStyle.CreerPiedPagination(_lblVide, 2, page =>
         {
             _pageCourante = page;
@@ -172,6 +163,7 @@ public sealed class FrmHistoriqueAbsences : Form
 
         Controls.Add(root);
     }
+
 
     private void ChargerListeEtudiants()
     {

@@ -5,35 +5,29 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmSaisieAbsences : Form
+public sealed partial class FrmSaisieAbsences : Form
 {
     private readonly AbsenceService _service = new();
     private readonly Action? _ouvrirHistorique;
-    private readonly ComboBox _cours = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _filiere = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _niveau = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _dateTexte = new() { Text = "06/11/2026" };
     private DateTime _dateValeur = new(2026, 11, 6);
-    private readonly DataGridView _grille = new();
     private DataTable? _etudiants;
 
-    public FrmSaisieAbsences(Action? ouvrirHistorique = null)
+    public FrmSaisieAbsences() : this(null) { }
+
+    public FrmSaisieAbsences(Action? ouvrirHistorique)
     {
         _ouvrirHistorique = ouvrirHistorique;
+        InitializeComponent();
         ConstruireInterface();
-        ChargerFiltres();
-        ChargerEtudiants();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            ChargerFiltres();
+            ChargerEtudiants();
+        }
     }
 
     private void ConstruireInterface()
     {
-        Text = "Saisie des Absences";
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        DoubleBuffered = true;
-
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -47,7 +41,6 @@ public sealed class FrmSaisieAbsences : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
 
-        // 1. En-tête "Saisie des Absences"
         var entete = UiStyle.EntetePage(IconeMenu.Absences, "Saisie des Absences");
         if (_ouvrirHistorique is not null)
         {
@@ -56,7 +49,6 @@ public sealed class FrmSaisieAbsences : Form
 
         root.Controls.Add(entete, 0, 0);
 
-        // 2. Grille 2x2 des filtres : Cours / Date (ligne 1), Filière / Niveau (ligne 2) comme sur 10_saisie_absences.png
         var filtersGrid = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -98,13 +90,11 @@ public sealed class FrmSaisieAbsences : Form
 
         root.Controls.Add(filtersGrid, 0, 1);
 
-        // 3. Tableau de présence (Matricule | Nom et Prénoms | Présence [case à cocher + badge Présent/Absent])
         ConfigurerGrillePresence();
         var card = UiStyle.CarteArrondie();
         card.Controls.Add(_grille);
         root.Controls.Add(card, 0, 2);
 
-        // 4. Boutons en bas à droite : "Enregistrer" (rouge) + "Annuler" (ardoise)
         var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -132,6 +122,7 @@ public sealed class FrmSaisieAbsences : Form
 
         Controls.Add(root);
     }
+
 
     private static Label CreerLabelFiltre(string texte) => new()
     {

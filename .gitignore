@@ -1,0 +1,8 @@
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.nuget.dgspec.json
+GestionUniversiteIIT/Forms/GestionUniversiteIIT.csproj.nuget.dgspec.json

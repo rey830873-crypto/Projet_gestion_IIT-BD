@@ -2,7 +2,7 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmSalles : FrmCatalogue
+public sealed partial class FrmSalles : FrmCatalogue
 {
-    public FrmSalles() : base(new CatalogueService().GetDefinition("Salles")) { }
+    public FrmSalles() : base(new CatalogueService().GetDefinition("Salles")) { InitializeComponent(); }
 }

@@ -1,42 +1,26 @@
 using System.Drawing.Drawing2D;
+using GestionUniversiteIIT.Data;
 using GestionUniversiteIIT.Models;
 using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmConnexion : Form
+public sealed partial class FrmConnexion : Form
 {
     private readonly AuthService _auth = new();
-    private readonly TextBox _nom = new();
-    private readonly TextBox _motDePasse = new();
     private bool _afficherMotDePasse;
     private Image? _logo;
 
     public FrmConnexion()
     {
         ChargerLogo();
+        InitializeComponent();
         ConstruireInterface();
-    }
-
-    private void ChargerLogo()
-    {
-        var logoPath = Path.Combine(AppContext.BaseDirectory, "Resources", "logo.png");
-        if (File.Exists(logoPath))
-        {
-            _logo = Image.FromFile(logoPath);
-        }
+        Shown += (_, _) => VerifierSignalConnexionAsync();
     }
 
     private void ConstruireInterface()
     {
-        Text = "Gestion Université IIT";
-        StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(920, 560);
-        ClientSize = new Size(980, 600);
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 10f);
-        DoubleBuffered = true;
-
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -46,7 +30,6 @@ public sealed class FrmConnexion : Form
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        // Barre supérieure bordeaux "Gestion Université IIT" comme sur 01_connexion.png
         var topBar = new Panel { Dock = DockStyle.Fill };
         topBar.Paint += (_, e) =>
         {
@@ -64,9 +47,48 @@ public sealed class FrmConnexion : Form
                 Color.White,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
         };
+
+        _pnlSignalSql.Dock = DockStyle.Right;
+        _pnlSignalSql.Width = 270;
+        _pnlSignalSql.Cursor = Cursors.Hand;
+        _pnlSignalSql.BackColor = Color.Transparent;
+        _pnlSignalSql.Paint += (_, e) =>
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            var pillRect = new Rectangle(8, 6, _pnlSignalSql.Width - 20, _pnlSignalSql.Height - 12);
+            using var path = UiStyle.CreerCheminArrondi(pillRect, 12);
+            using var bg = new SolidBrush(Color.FromArgb(72, 0, 0, 0));
+            e.Graphics.FillPath(bg, path);
+
+            Color dotColor = Connexion.EstConnecte switch
+            {
+                true => Color.FromArgb(74, 222, 128),
+                false => Color.FromArgb(248, 113, 113),
+                _ => Color.FromArgb(251, 191, 36)
+            };
+            using var dotBrush = new SolidBrush(dotColor);
+            e.Graphics.FillEllipse(dotBrush, pillRect.X + 10, pillRect.Y + (pillRect.Height - 10) / 2, 10, 10);
+
+            string texteSignal = Connexion.EstConnecte switch
+            {
+                true => "SQL Connecté (GestionUniversiteIIT)",
+                false => "SQL Déconnecté — Cliquer pour retester",
+                _ => "SQL : Vérification..."
+            };
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                texteSignal,
+                new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(pillRect.X + 26, pillRect.Y, pillRect.Width - 34, pillRect.Height),
+                Color.White,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        };
+        _pnlSignalSql.Click += (_, _) => VerifierSignalConnexionAsync();
+        topBar.Controls.Add(_pnlSignalSql);
+
         layout.Controls.Add(topBar, 0, 0);
 
-        // Scène principale avec campus illustré + logo à gauche et carte de connexion à droite
         var scene = new PanneauCampus(_logo) { Dock = DockStyle.Fill };
 
         var card = new PanneauCarteConnexion
@@ -74,7 +96,6 @@ public sealed class FrmConnexion : Form
             Size = new Size(370, 390)
         };
 
-        // Icône utilisateur bordeaux en haut de la carte
         var avatar = new Panel
         {
             Size = new Size(64, 54),
@@ -90,7 +111,6 @@ public sealed class FrmConnexion : Form
         };
         card.Controls.Add(avatar);
 
-        // Titre "Connexion"
         var lblTitre = new Label
         {
             Text = "Connexion",
@@ -104,7 +124,6 @@ public sealed class FrmConnexion : Form
         };
         card.Controls.Add(lblTitre);
 
-        // Champ "Nom d'utilisateur" avec icône personne à gauche
         var boxNom = CreerChampSaisie(
             _nom,
             "Nom d'utilisateur",
@@ -113,7 +132,6 @@ public sealed class FrmConnexion : Form
         boxNom.Location = new Point(32, 130);
         card.Controls.Add(boxNom);
 
-        // Champ "Mot de passe" avec cadenas à gauche et œil à droite
         _motDePasse.UseSystemPasswordChar = true;
         var boxMdp = CreerChampSaisie(
             _motDePasse,
@@ -127,7 +145,6 @@ public sealed class FrmConnexion : Form
         boxMdp.Location = new Point(32, 192);
         card.Controls.Add(boxMdp);
 
-        // Bouton rouge "Se connecter"
         var btnConnexion = UiStyle.BoutonMaquette(
             "Se connecter",
             Color.FromArgb(208, 16, 24),
@@ -139,7 +156,6 @@ public sealed class FrmConnexion : Form
         btnConnexion.Click += (_, _) => OuvrirSession();
         card.Controls.Add(btnConnexion);
 
-        // Lien "Mot de passe oublié ?"
         var lblOublie = new Label
         {
             Text = "Mot de passe oublié ?",
@@ -170,6 +186,34 @@ public sealed class FrmConnexion : Form
         Controls.Add(layout);
         AcceptButton = btnConnexion;
     }
+
+    private void VerifierSignalConnexionAsync()
+    {
+        Task.Run(() =>
+        {
+            Connexion.TesterConnexion();
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                BeginInvoke(() =>
+                {
+                    if (!IsDisposed) _pnlSignalSql.Invalidate();
+                });
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
+        });
+    }
+
+    private void ChargerLogo()
+    {
+        var logoPath = Path.Combine(AppContext.BaseDirectory, "Resources", "logo.png");
+        if (File.Exists(logoPath))
+        {
+            _logo = Image.FromFile(logoPath);
+        }
+    }
+
 
     private static Panel CreerChampSaisie(
         TextBox textBox,
@@ -370,10 +414,14 @@ public sealed class FrmConnexion : Form
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Permet d'accéder aux 12 maquettes même si SQL Server n'est pas démarré localement
-            utilisateur = new Utilisateur(1, _nom.Text.Trim(), "Administrateur");
+            MessageBox.Show(
+                $"Impossible de vérifier la connexion. Vérifiez la base de données et réessayez.\n\n{ex.Message}",
+                "Connexion indisponible",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
         }
 
         if (utilisateur is null)

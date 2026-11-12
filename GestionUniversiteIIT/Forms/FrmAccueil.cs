@@ -1,46 +1,102 @@
 using System.Drawing.Drawing2D;
+using GestionUniversiteIIT.Data;
 using GestionUniversiteIIT.Models;
 using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public sealed class FrmAccueil : Form
+public sealed partial class FrmAccueil : Form
 {
     private readonly Utilisateur _utilisateur;
-    private readonly Panel _contenu = new();
     private readonly List<BoutonMenuLateral> _boutonsMenu = [];
+    private readonly System.Windows.Forms.Timer _timerSignalSql = new() { Interval = 15_000 };
+    private readonly Action<bool, string> _onStatusChanged;
     private Form? _pageCourante;
     private Image? _logo;
 
     public bool DeconnexionDemandee { get; private set; }
 
+    public FrmAccueil() : this(new Utilisateur(0, "Concepteur", "Administrateur")) { }
+
     public FrmAccueil(Utilisateur utilisateur)
     {
         _utilisateur = utilisateur;
         ChargerLogo();
+        InitializeComponent();
         ConstruireInterface();
+
+        _onStatusChanged = (_, _) =>
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                if (InvokeRequired)
+                {
+                    BeginInvoke(() => { if (!IsDisposed) _pnlSignalSql.Invalidate(); });
+                }
+                else
+                {
+                    _pnlSignalSql.Invalidate();
+                }
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
+        };
+        Connexion.StatusChanged += _onStatusChanged;
+        _timerSignalSql.Tick += (_, _) => VerifierSignalSqlAsync();
+        Shown += (_, _) =>
+        {
+            _timerSignalSql.Start();
+            VerifierSignalSqlAsync();
+        };
+        FormClosed += (_, _) =>
+        {
+            _timerSignalSql.Stop();
+            _timerSignalSql.Dispose();
+            Connexion.StatusChanged -= _onStatusChanged;
+        };
+
         AfficherAccueil();
     }
 
-    private void ChargerLogo()
+    private static string ExtraireNomBase()
     {
-        var logoPath = Path.Combine(AppContext.BaseDirectory, "Resources", "logo.png");
-        if (File.Exists(logoPath))
+        try
         {
-            _logo = Image.FromFile(logoPath);
+            var b = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(Connexion.ConnectionString);
+            return string.IsNullOrWhiteSpace(b.InitialCatalog) ? "SQL" : b.InitialCatalog;
         }
+        catch
+        {
+            return "SQL";
+        }
+    }
+
+    private void VerifierSignalSqlAsync(bool ouvrirParametresSiEchec = false)
+    {
+        Task.Run(() =>
+        {
+            var res = Connexion.TesterConnexion();
+            if (IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                BeginInvoke(() =>
+                {
+                    if (IsDisposed) return;
+                    _pnlSignalSql.Invalidate();
+                    if (!res.Succes && ouvrirParametresSiEchec)
+                    {
+                        NaviguerVers(IconeMenu.Parametres, new FrmParametres(_utilisateur.NomUtilisateur));
+                    }
+                });
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
+        });
     }
 
     private void ConstruireInterface()
     {
-        Text = "Gestion Université IIT";
-        StartPosition = FormStartPosition.CenterScreen;
-        WindowState = FormWindowState.Maximized;
-        MinimumSize = new Size(1060, 680);
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        DoubleBuffered = true;
-
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -49,10 +105,9 @@ public sealed class FrmAccueil : Form
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 218));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        // Barre latérale gauche bordeaux dégradée
         var menu = new PanneauMenuLateral(_logo)
         {
             Dock = DockStyle.Fill,
@@ -82,7 +137,6 @@ public sealed class FrmAccueil : Form
         AjouterBouton(nav, IconeMenu.Parametres, "Paramètres", () => NaviguerVers(IconeMenu.Parametres, new FrmParametres(_utilisateur.NomUtilisateur)));
         AjouterBouton(nav, IconeMenu.Deconnexion, "Déconnexion", Deconnecter);
 
-        // Zone principale à droite avec barre de titre supérieure bordeaux + contenu blanc
         var workspace = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -113,6 +167,45 @@ public sealed class FrmAccueil : Form
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
         };
 
+        _pnlSignalSql.Dock = DockStyle.Right;
+        _pnlSignalSql.Width = 290;
+        _pnlSignalSql.Cursor = Cursors.Hand;
+        _pnlSignalSql.BackColor = Color.Transparent;
+        _pnlSignalSql.Paint += (_, e) =>
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            var pillRect = new Rectangle(8, 7, _pnlSignalSql.Width - 22, _pnlSignalSql.Height - 14);
+            using var path = UiStyle.CreerCheminArrondi(pillRect, 13);
+            using var bg = new SolidBrush(Color.FromArgb(72, 0, 0, 0));
+            e.Graphics.FillPath(bg, path);
+
+            Color dotColor = Connexion.EstConnecte switch
+            {
+                true => Color.FromArgb(74, 222, 128),
+                false => Color.FromArgb(248, 113, 113),
+                _ => Color.FromArgb(251, 191, 36)
+            };
+            using var dotBrush = new SolidBrush(dotColor);
+            e.Graphics.FillEllipse(dotBrush, pillRect.X + 10, pillRect.Y + (pillRect.Height - 10) / 2, 10, 10);
+
+            string texteSignal = Connexion.EstConnecte switch
+            {
+                true => $"SQL Connecté ({ExtraireNomBase()})",
+                false => "SQL Déconnecté — Cliquer pour vérifier",
+                _ => "SQL : Vérification..."
+            };
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                texteSignal,
+                new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(pillRect.X + 26, pillRect.Y, pillRect.Width - 34, pillRect.Height),
+                Color.White,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        };
+        _pnlSignalSql.Click += (_, _) => VerifierSignalSqlAsync(ouvrirParametresSiEchec: true);
+        header.Controls.Add(_pnlSignalSql);
+
         _contenu.Dock = DockStyle.Fill;
         _contenu.BackColor = Color.White;
 
@@ -123,6 +216,16 @@ public sealed class FrmAccueil : Form
         root.Controls.Add(workspace, 1, 0);
         Controls.Add(root);
     }
+
+    private void ChargerLogo()
+    {
+        var logoPath = Path.Combine(AppContext.BaseDirectory, "Resources", "logo.png");
+        if (File.Exists(logoPath))
+        {
+            _logo = Image.FromFile(logoPath);
+        }
+    }
+
 
     public void OuvrirNouvelleInscription()
     {
@@ -163,11 +266,24 @@ public sealed class FrmAccueil : Form
     {
         var bouton = new BoutonMenuLateral(icone, texte)
         {
-            Width = 194,
-            Height = 38,
-            Margin = new Padding(0, 2, 0, 2)
+            Width = 196,
+            Height = 42,
+            Margin = icone == IconeMenu.Deconnexion
+                ? new Padding(0, 12, 0, 2)
+                : new Padding(0, 2, 0, 2)
         };
-        bouton.Click += (_, _) => action();
+        bouton.Click += (_, _) =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(this, $"Impossible d'ouvrir cet écran : {exception.Message}",
+                    "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        };
         _boutonsMenu.Add(bouton);
         nav.Controls.Add(bouton);
     }
@@ -427,16 +543,26 @@ public sealed class FrmAccueil : Form
 
             using (var bg = new LinearGradientBrush(
                        ClientRectangle,
-                       Color.FromArgb(98, 7, 12),
-                       Color.FromArgb(52, 4, 7),
+                       Color.FromArgb(78, 11, 17),
+                       Color.FromArgb(42, 5, 9),
                        90f))
             {
                 g.FillRectangle(bg, ClientRectangle);
             }
 
-            // Médaillon logo en haut à gauche comme sur les maquettes 02 à 12
+            using (var shadow = new SolidBrush(Color.FromArgb(18, 0, 0, 0)))
+            {
+                g.FillRectangle(shadow, ClientRectangle.Right - 2, 0, 2, ClientRectangle.Height);
+            }
+
+            var divider = new Rectangle(12, 86, Width - 24, 1);
+            using (var dividerBrush = new SolidBrush(Color.FromArgb(137, 73, 79)))
+            {
+                g.FillRectangle(dividerBrush, divider);
+            }
+
             var circleRect = new Rectangle(16, 12, 68, 68);
-            using (var whiteBrush = new SolidBrush(Color.White))
+            using (var whiteBrush = new SolidBrush(Color.FromArgb(252, 252, 252)))
             {
                 g.FillEllipse(whiteBrush, circleRect);
             }
@@ -446,17 +572,22 @@ public sealed class FrmAccueil : Form
                 g.DrawImage(_logo, new Rectangle(21, 16, 58, 58));
             }
 
+            using (var glow = new SolidBrush(Color.FromArgb(35, 255, 255, 255)))
+            {
+                g.FillEllipse(glow, new Rectangle(14, 10, 72, 72));
+            }
+
             TextRenderer.DrawText(
                 g,
                 "Gestion",
                 new Font("Segoe UI", 11f, FontStyle.Bold | FontStyle.Italic),
-                new Rectangle(86, 22, 122, 24),
-                Color.White,
+                new Rectangle(92, 22, 120, 24),
+                Color.FromArgb(255, 246, 247),
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
-            var pillRect = new Rectangle(34, 48, 166, 24);
-            using (var pillPath = UiStyle.CreerCheminArrondi(pillRect, 11))
-            using (var pillBrush = new LinearGradientBrush(pillRect, UiStyle.RougeVif, UiStyle.Rouge, 0f))
+            var pillRect = new Rectangle(28, 49, 170, 26);
+            using (var pillPath = UiStyle.CreerCheminArrondi(pillRect, 12))
+            using (var pillBrush = new LinearGradientBrush(pillRect, Color.FromArgb(218, 35, 43), Color.FromArgb(160, 12, 18), 0f))
             {
                 g.FillPath(pillBrush, pillPath);
             }
@@ -513,30 +644,36 @@ public sealed class FrmAccueil : Form
             var rect = new Rectangle(2, 1, Width - 4, Height - 2);
             if (_estActif)
             {
-                using var path = UiStyle.CreerCheminArrondi(rect, 9);
-                using var brush = new LinearGradientBrush(
-                    rect,
-                    Color.FromArgb(228, 22, 32),
-                    Color.FromArgb(172, 12, 18),
-                    0f);
+                using var path = UiStyle.CreerCheminArrondi(rect, 11);
+                using var brush = new SolidBrush(Color.FromArgb(255, 246, 246, 248));
                 g.FillPath(brush, path);
+
+                using var indicatorPath = UiStyle.CreerCheminArrondi(
+                    new Rectangle(2, 8, 4, Height - 16),
+                    2);
+                using var indicatorBrush = new SolidBrush(Color.FromArgb(196, 25, 36));
+                g.FillPath(indicatorBrush, indicatorPath);
             }
-            else if (_survol)
+            else
             {
-                using var path = UiStyle.CreerCheminArrondi(rect, 9);
-                using var brush = new SolidBrush(Color.FromArgb(45, 255, 255, 255));
+                using var path = UiStyle.CreerCheminArrondi(rect, 11);
+                var fond = _survol ? Color.FromArgb(136, 29, 36) : Color.FromArgb(91, 8, 14);
+                using var brush = new SolidBrush(fond);
                 g.FillPath(brush, path);
             }
 
-            UiStyle.DessinerIconeMenu(g, new Rectangle(14, (Height - 20) / 2, 20, 20), Icone, Color.White);
+            var foreground = _estActif
+                ? Color.FromArgb(102, 18, 27)
+                : Color.FromArgb(255, 247, 247, 248);
+            UiStyle.DessinerIconeMenu(g, new Rectangle(16, (Height - 20) / 2, 20, 20), Icone, foreground);
 
             TextRenderer.DrawText(
                 g,
                 Text,
                 Font,
-                new Rectangle(46, 0, Width - 52, Height),
-                Color.White,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                new Rectangle(48, 0, Width - 56, Height),
+                foreground,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
     }
 

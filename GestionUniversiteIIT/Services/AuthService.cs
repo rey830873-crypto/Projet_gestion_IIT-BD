@@ -53,7 +53,7 @@ public sealed class AuthService
                     : null;
             }
 
-            return new Utilisateur(1, cleanUser, "Administrateur");
+            return null;
         }
     }
 

@@ -3,44 +3,31 @@ using GestionUniversiteIIT.Services;
 
 namespace GestionUniversiteIIT.Forms;
 
-public class FrmCatalogue : Form
+public partial class FrmCatalogue : Form
 {
     private readonly CatalogueService _service = new();
     private readonly DefinitionCatalogue _definition;
     private readonly Action? _onNouveau;
-    private readonly DataGridView _grille = new();
-    private readonly Label _lblTotal = new();
-    private TextBox _recherche = null!;
     private DataTable? _donnees;
     private int _pageCourante = 1;
+
+    public FrmCatalogue() : this(new CatalogueService().GetDefinition("Etudiants")) { }
 
     public FrmCatalogue(DefinitionCatalogue definition, Action? onNouveau = null)
     {
         _definition = definition;
         _onNouveau = onNouveau;
+        InitializeComponent();
         ConstruireInterface();
-        Recharger();
+        if (System.ComponentModel.LicenseManager.UsageMode != System.ComponentModel.LicenseUsageMode.Designtime)
+        {
+            Recharger();
+        }
     }
-
-    private IconeMenu DeterminerIcone() => _definition.Cle switch
-    {
-        "Etudiants" => IconeMenu.Etudiants,
-        "Inscriptions" => IconeMenu.Inscriptions,
-        "Enseignants" => IconeMenu.Enseignants,
-        "Cours" => IconeMenu.Cours,
-        "Planning" => IconeMenu.Planification,
-        "Salles" => IconeMenu.Salles,
-        _ => IconeMenu.Etudiants
-    };
 
     private void ConstruireInterface()
     {
         Text = _definition.Titre;
-        BackColor = Color.White;
-        Font = new Font("Segoe UI", 9.5f);
-        FormBorderStyle = FormBorderStyle.None;
-        Dock = DockStyle.Fill;
-        DoubleBuffered = true;
 
         var root = new TableLayoutPanel
         {
@@ -55,10 +42,8 @@ public class FrmCatalogue : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
 
-        // 1. En-tête avec icône rouge et titre
         root.Controls.Add(UiStyle.EntetePage(DeterminerIcone(), _definition.Titre), 0, 0);
 
-        // 2. Barre d'outils : Recherche à gauche + Bouton "+ Nouveau" / "+ Nouvelle" à droite
         var toolbar = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
         var searchBox = UiStyle.ChampRecherche(_definition.PlaceholderRecherche, 460, out _recherche);
         searchBox.Location = new Point(2, 4);
@@ -84,7 +69,6 @@ public class FrmCatalogue : Form
         toolbar.Controls.Add(btnNouveau);
         root.Controls.Add(toolbar, 0, 1);
 
-        // 3. Tableau de données dans une carte arrondie avec badges de statut et colonne Actions (Modifier/Supprimer)
         UiStyle.ConfigurerGrille(_grille);
         _grille.Dock = DockStyle.Fill;
         _grille.AutoGenerateColumns = true;
@@ -124,7 +108,6 @@ public class FrmCatalogue : Form
         card.Controls.Add(_grille);
         root.Controls.Add(card, 0, 2);
 
-        // 4. Pied de page : Total à gauche + Pagination à droite
         root.Controls.Add(UiStyle.CreerPiedPagination(_lblTotal, _definition.DernierePageMaquette, page =>
         {
             _pageCourante = page;
@@ -133,6 +116,18 @@ public class FrmCatalogue : Form
 
         Controls.Add(root);
     }
+
+    private IconeMenu DeterminerIcone() => _definition.Cle switch
+    {
+        "Etudiants" => IconeMenu.Etudiants,
+        "Inscriptions" => IconeMenu.Inscriptions,
+        "Enseignants" => IconeMenu.Enseignants,
+        "Cours" => IconeMenu.Cours,
+        "Planning" => IconeMenu.Planification,
+        "Salles" => IconeMenu.Salles,
+        _ => IconeMenu.Etudiants
+    };
+
 
     private void Recharger()
     {
