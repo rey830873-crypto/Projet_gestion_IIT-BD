@@ -6,3 +6,8 @@ obj/
 *.cache
 *.nuget.dgspec.json
 GestionUniversiteIIT/Forms/GestionUniversiteIIT.csproj.nuget.dgspec.json
+CAHIER_DES_CHARGES.docx
+CAHIER_DES_CHARGES.md
+DOCUMENTATION_CODE.docx
+DOCUMENTATION_CODE.md
+SPEECH_PRESENTATION.docx
