@@ -8,10 +8,13 @@ public sealed partial class FrmHistoriqueAbsences : Form
 {
     private readonly AbsenceService _service = new();
     private readonly Action? _ouvrirSaisie;
+    private readonly Panel _footerHost = new();
     private DataTable? _donnees;
     private int _pageCourante = 1;
+    private int _dernierePageAffichee = -1;
+    private int _taillePageActuelle = 8;
     private DateTime _debut = new(2026, 10, 1);
-    private DateTime _fin = new(2026, 11, 6);
+    private DateTime _fin = DateTime.Today;
 
     public FrmHistoriqueAbsences() : this(null) { }
 
@@ -29,14 +32,18 @@ public sealed partial class FrmHistoriqueAbsences : Form
 
     private void ConstruireInterface()
     {
+        BackColor = Color.FromArgb(246, 248, 252);
+        _periode.Text = $"{_debut:dd/MM/yyyy} - {_fin:dd/MM/yyyy}";
+
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(26, 18, 26, 16),
             RowCount = 4,
             ColumnCount = 1,
-            BackColor = Color.White
+            BackColor = Color.FromArgb(246, 248, 252)
         };
+        UiStyle.AppliquerFondDesign(root);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -50,25 +57,29 @@ public sealed partial class FrmHistoriqueAbsences : Form
 
         root.Controls.Add(entete, 0, 0);
 
-        var filterBar = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+        var filterBar = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
 
         var leftGroup = new FlowLayoutPanel
         {
             AutoSize = true,
             WrapContents = false,
             Location = new Point(2, 2),
-            BackColor = Color.White
+            BackColor = Color.Transparent
         };
         leftGroup.Controls.Add(new Label
         {
-            Text = "Étudiant :",
+            Text = "Niveau :",
             AutoSize = true,
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             ForeColor = UiStyle.Texte,
             Margin = new Padding(0, 10, 8, 0)
         });
-        _etudiant.SelectedIndexChanged += (_, _) => Charger();
-        leftGroup.Controls.Add(UiStyle.EncadrerChamp(_etudiant, 240, 38));
+        _etudiant.SelectedIndexChanged += (_, _) =>
+        {
+            _pageCourante = 1;
+            Charger();
+        };
+        leftGroup.Controls.Add(UiStyle.EncadrerChamp(_etudiant, 160, 38));
         filterBar.Controls.Add(leftGroup);
 
         var rightGroup = new FlowLayoutPanel
@@ -76,7 +87,7 @@ public sealed partial class FrmHistoriqueAbsences : Form
             AutoSize = true,
             WrapContents = false,
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            BackColor = Color.White
+            BackColor = Color.Transparent
         };
         rightGroup.Controls.Add(new Label
         {
@@ -136,30 +147,20 @@ public sealed partial class FrmHistoriqueAbsences : Form
 
         var card = UiStyle.CarteArrondie();
         card.Controls.Add(_grille);
-        root.Controls.Add(card, 0, 2);
-
-        var footer = UiStyle.CreerPiedPagination(_lblVide, 2, page =>
+        _grille.SizeChanged += (_, _) =>
         {
-            _pageCourante = page;
-            AfficherPage();
-        });
-        var btnImprimer = UiStyle.BoutonBleuExport("Imprimer", 132, 34);
-        btnImprimer.Location = new Point(4, 6);
-        btnImprimer.Click += (_, _) =>
-        {
-            if (_donnees is not null)
+            int nouvelleTaille = UiStyle.CalculerTaillePage(_grille, 6);
+            if (nouvelleTaille != _taillePageActuelle)
             {
-                string etu = Convert.ToString(_etudiant.SelectedItem) ?? "Tous";
-                UiStyle.ImprimerTable(
-                    this,
-                    "Historique des Absences",
-                    $"Étudiant : {etu}  |  Période : {_periode.Text}",
-                    _donnees,
-                    "Historique_Absences_IIT.csv");
+                _taillePageActuelle = nouvelleTaille;
+                MettreAJourPaginationEtPage();
             }
         };
-        footer.Controls.Add(btnImprimer);
-        root.Controls.Add(footer, 0, 3);
+        root.Controls.Add(card, 0, 2);
+
+        _footerHost.Dock = DockStyle.Fill;
+        _footerHost.BackColor = Color.Transparent;
+        root.Controls.Add(_footerHost, 0, 3);
 
         Controls.Add(root);
     }
@@ -168,30 +169,7 @@ public sealed partial class FrmHistoriqueAbsences : Form
     private void ChargerListeEtudiants()
     {
         _etudiant.Items.Clear();
-        _etudiant.Items.Add("Tous");
-
-        try
-        {
-            var table = DbHelper.Query("SELECT Nom + N' ' + Prenom AS NomComplet FROM dbo.Etudiants WHERE Actif = 1 ORDER BY Nom");
-            foreach (DataRow row in table.Rows)
-            {
-                string nom = Convert.ToString(row["NomComplet"]) ?? "";
-                if (!string.IsNullOrWhiteSpace(nom) && !_etudiant.Items.Contains(nom))
-                {
-                    _etudiant.Items.Add(nom);
-                }
-            }
-        }
-        catch
-        {
-            // Mode maquette
-        }
-
-        if (_etudiant.Items.Count == 1)
-        {
-            _etudiant.Items.AddRange(["ZOUA Christ", "KONE Ibrahim", "TAYE Emmanuel", "ADJA Koffi"]);
-        }
-
+        _etudiant.Items.AddRange(["Tous", "L1", "L2", "L3"]);
         _etudiant.SelectedIndex = 0;
     }
 
@@ -212,6 +190,46 @@ public sealed partial class FrmHistoriqueAbsences : Form
     {
         string filtreEtu = Convert.ToString(_etudiant.SelectedItem) ?? "Tous";
         _donnees = _service.Historique(_debut, _fin, filtreEtu);
+        _dernierePageAffichee = -1;
+        MettreAJourPaginationEtPage();
+    }
+
+    private void MettreAJourPaginationEtPage()
+    {
+        if (_donnees is null) return;
+        _taillePageActuelle = UiStyle.CalculerTaillePage(_grille, 6);
+        int nbPages = Math.Max(1, (int)Math.Ceiling(_donnees.DefaultView.Count / (double)_taillePageActuelle));
+        if (_pageCourante > nbPages) _pageCourante = nbPages;
+
+        if (nbPages != _dernierePageAffichee)
+        {
+            _dernierePageAffichee = nbPages;
+            _footerHost.Controls.Clear();
+            var footer = UiStyle.CreerPiedPagination(_lblVide, nbPages, page =>
+            {
+                _pageCourante = page;
+                AfficherPage();
+            });
+            var btnImprimer = UiStyle.BoutonBleuExport("Imprimer", 132, 34);
+            btnImprimer.Location = new Point(220, 6);
+            btnImprimer.Click += (_, _) =>
+            {
+                if (_donnees is not null)
+                {
+                    string niv = Convert.ToString(_etudiant.SelectedItem) ?? "Tous";
+                    UiStyle.ImprimerTable(
+                        this,
+                        "Historique des Absences",
+                        $"Niveau : {niv}  |  Période : {_periode.Text}",
+                        _donnees,
+                        "Historique_Absences_IIT.csv");
+                }
+            };
+            footer.Controls.Add(btnImprimer);
+            _footerHost.Controls.Add(footer);
+        }
+
+        _lblVide.Text = $"Total : {_donnees.DefaultView.Count} absence(s)";
         AfficherPage();
     }
 
@@ -222,7 +240,7 @@ public sealed partial class FrmHistoriqueAbsences : Form
             return;
         }
 
-        _grille.DataSource = UiStyle.PaginerVue(_donnees.DefaultView, _pageCourante, 5);
+        _grille.DataSource = UiStyle.PaginerVue(_donnees.DefaultView, _pageCourante, _taillePageActuelle);
 
         if (_grille.Columns.Contains("AbsenceId"))
         {

@@ -3,7 +3,7 @@ namespace GestionUniversiteIIT.Forms;
 public sealed partial class FrmHistoriqueAbsences : Form
 {
     private readonly ComboBox _etudiant = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _periode = new() { Text = "01/10/2026 - 06/11/2026", ReadOnly = false };
+    private readonly TextBox _periode = new() { ReadOnly = false };
     private readonly DataGridView _grille = new();
     private readonly Label _lblVide = new();
 

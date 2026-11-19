@@ -67,6 +67,80 @@ internal static class UiStyle
         return path;
     }
 
+    public static void AppliquerFondDesign(Control conteneur)
+    {
+        conteneur.BackColor = Color.FromArgb(246, 248, 252);
+        conteneur.Resize += (_, _) => conteneur.Invalidate();
+        conteneur.Paint += (_, e) =>
+        {
+            var r = conteneur.ClientRectangle;
+            if (r.Width <= 0 || r.Height <= 0) return;
+
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            using (var bg = new LinearGradientBrush(r, Color.FromArgb(249, 250, 252), Color.FromArgb(238, 242, 248), 35f))
+            {
+                g.FillRectangle(bg, r);
+            }
+
+            // Trame de points géométrique subtile en haut à droite et en bas à gauche
+            using (var dotBrush = new SolidBrush(Color.FromArgb(22, 100, 116, 139)))
+            {
+                for (int x = Math.Max(0, r.Width - 260); x < r.Width - 16; x += 18)
+                {
+                    for (int y = 16; y < Math.Min(r.Height, 200); y += 18)
+                    {
+                        g.FillEllipse(dotBrush, x, y, 2.2f, 2.2f);
+                    }
+                }
+                for (int x = 16; x < Math.Min(r.Width, 260); x += 18)
+                {
+                    for (int y = Math.Max(0, r.Height - 200); y < r.Height - 16; y += 18)
+                    {
+                        g.FillEllipse(dotBrush, x, y, 2.2f, 2.2f);
+                    }
+                }
+            }
+
+            // Rubans courbes translucides en haut à droite (bordeaux & bleu marine IIT)
+            using (var pathTop1 = new GraphicsPath())
+            {
+                pathTop1.AddBezier(r.Width * 0.58f, -10, r.Width * 0.72f, 55, r.Width * 0.88f, 22, r.Width + 20, 145);
+                pathTop1.AddLine(r.Width + 20, -10, r.Width * 0.58f, -10);
+                pathTop1.CloseFigure();
+                using var bTop1 = new SolidBrush(Color.FromArgb(22, 136, 10, 16));
+                g.FillPath(bTop1, pathTop1);
+            }
+            using (var pathTop2 = new GraphicsPath())
+            {
+                pathTop2.AddBezier(r.Width * 0.68f, -10, r.Width * 0.80f, 38, r.Width * 0.92f, 75, r.Width + 20, 220);
+                pathTop2.AddLine(r.Width + 20, -10, r.Width * 0.68f, -10);
+                pathTop2.CloseFigure();
+                using var bTop2 = new SolidBrush(Color.FromArgb(16, 30, 52, 82));
+                g.FillPath(bTop2, pathTop2);
+            }
+
+            // Rubans courbes translucides en bas à gauche
+            using (var pathBot1 = new GraphicsPath())
+            {
+                pathBot1.AddBezier(-20, r.Height - 170, r.Width * 0.08f, r.Height - 55, r.Width * 0.24f, r.Height - 85, r.Width * 0.38f, r.Height + 10);
+                pathBot1.AddLine(-20, r.Height + 10, -20, r.Height - 170);
+                pathBot1.CloseFigure();
+                using var bBot1 = new SolidBrush(Color.FromArgb(20, 136, 10, 16));
+                g.FillPath(bBot1, pathBot1);
+            }
+            using (var pathBot2 = new GraphicsPath())
+            {
+                pathBot2.AddBezier(-20, r.Height - 240, r.Width * 0.05f, r.Height - 105, r.Width * 0.16f, r.Height - 40, r.Width * 0.28f, r.Height + 10);
+                pathBot2.AddLine(-20, r.Height + 10, -20, r.Height - 240);
+                pathBot2.CloseFigure();
+                using var bBot2 = new SolidBrush(Color.FromArgb(15, 30, 52, 82));
+                g.FillPath(bBot2, pathBot2);
+            }
+        };
+    }
+
     public static Button Bouton(string texte, bool primaire = false)
     {
         return BoutonMaquette(
@@ -172,6 +246,7 @@ internal static class UiStyle
         {
             Text = titre,
             AutoSize = true,
+            UseMnemonic = false,
             Location = new Point(46, 5),
             ForeColor = Texte,
             Font = new Font("Segoe UI", 17.5f, FontStyle.Bold)
@@ -485,6 +560,19 @@ internal static class UiStyle
         }
 
         return footer;
+    }
+
+    public static int CalculerTaillePage(DataGridView grid, int minimum = 8)
+    {
+        int headerH = grid.ColumnHeadersVisible ? grid.ColumnHeadersHeight : 0;
+        int rowH = Math.Max(1, grid.RowTemplate.Height);
+        int dispo = grid.ClientSize.Height - headerH - 4;
+        if (dispo <= rowH)
+        {
+            return minimum;
+        }
+
+        return Math.Max(minimum, dispo / rowH);
     }
 
     public static DataTable PaginerVue(DataView vue, int page, int taillePage)
@@ -823,6 +911,29 @@ internal static class UiStyle
         return panel;
     }
 
+    public static Panel CarteIndicateurModerne(
+        string titre,
+        int valeur,
+        Color couleurHaut,
+        Color couleurBas,
+        IconeMenu icone,
+        bool valeurAuDessus = true,
+        Action? onClick = null)
+    {
+        var panel = new CarteKpiModerne(titre, valeur, couleurHaut, couleurBas, icone, valeurAuDessus)
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(6),
+            Cursor = onClick is not null ? Cursors.Hand : Cursors.Default
+        };
+        if (onClick is not null)
+        {
+            panel.Click += (_, _) => onClick();
+        }
+
+        return panel;
+    }
+
     public static void DessinerIconeMenu(Graphics g, Rectangle rect, IconeMenu icone, Color couleur)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -1064,7 +1175,6 @@ internal sealed class CarteKpi : Panel
             e.Graphics.FillPath(brush, path);
         }
 
-        // Icône blanche à gauche
         DessinerGrandeIconeCarte(e.Graphics, new Rectangle(18, Height / 2 - 20, 42, 40), _icone);
 
         string texteValeur = _valeur.ToString("N0").Replace(",", " ").Replace("\u00A0", " ");
@@ -1072,7 +1182,6 @@ internal sealed class CarteKpi : Panel
 
         if (_valeurAuDessus)
         {
-            // Disposition Maquette 12 : Nombre en haut, libellé en bas
             TextRenderer.DrawText(
                 e.Graphics,
                 texteValeur,
@@ -1091,7 +1200,6 @@ internal sealed class CarteKpi : Panel
         }
         else
         {
-            // Disposition Maquette 2 : Libellé en haut, nombre en bas
             TextRenderer.DrawText(
                 e.Graphics,
                 _titre,
@@ -1144,6 +1252,157 @@ internal sealed class CarteKpi : Panel
                 g.DrawLine(pen, cx - 6, cy - 2, cx + 6, cy - 2);
                 g.DrawLine(pen, cx - 6, cy + 4, cx + 6, cy + 4);
                 g.DrawLine(pen, cx - 6, cy + 9, cx + 2, cy + 9);
+                break;
+        }
+    }
+}
+
+internal sealed class CarteKpiModerne : Panel
+{
+    private readonly string _titre;
+    private readonly int _valeur;
+    private readonly Color _haut;
+    private readonly Color _bas;
+    private readonly IconeMenu _icone;
+    private readonly bool _valeurAuDessus;
+    private bool _survole;
+
+    public CarteKpiModerne(string titre, int valeur, Color haut, Color bas, IconeMenu icone, bool valeurAuDessus)
+    {
+        _titre = titre;
+        _valeur = valeur;
+        _haut = haut;
+        _bas = bas;
+        _icone = icone;
+        _valeurAuDessus = valeurAuDessus;
+        DoubleBuffered = true;
+        BackColor = Color.Transparent;
+        MinimumSize = new Size(175, 96);
+
+        MouseEnter += (_, _) => { _survole = true; Invalidate(); };
+        MouseLeave += (_, _) => { _survole = false; Invalidate(); };
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        var rect = new Rectangle(2, 2, Width - 5, Height - 5);
+        using var path = UiStyle.CreerCheminArrondi(rect, 14);
+
+        // Ombre douce sous la carte
+        var shadowRect = new Rectangle(rect.X + 1, rect.Y + 3, rect.Width, rect.Height);
+        using (var shadowPath = UiStyle.CreerCheminArrondi(shadowRect, 14))
+        using (var shadowBrush = new SolidBrush(Color.FromArgb(_survole ? 22 : 12, 15, 23, 42)))
+        {
+            e.Graphics.FillPath(shadowBrush, shadowPath);
+        }
+
+        // Fond blanc moderne (légère teinte au survol)
+        Color bg = _survole ? Color.FromArgb(250, 251, 255) : Color.White;
+        using (var fill = new SolidBrush(bg))
+        {
+            e.Graphics.FillPath(fill, path);
+        }
+
+        // Bordure fine (accentuée au survol)
+        using (var border = new Pen(_survole ? Color.FromArgb(160, _haut) : Color.FromArgb(226, 232, 240), _survole ? 1.5f : 1.1f))
+        {
+            e.Graphics.DrawPath(border, path);
+        }
+
+        // Barre d'accentuation colorée à gauche
+        var accentRect = new Rectangle(rect.X + 10, rect.Y + 14, 5, rect.Height - 28);
+        using (var accentPath = UiStyle.CreerCheminArrondi(accentRect, 3))
+        using (var accentBrush = new LinearGradientBrush(accentRect, _haut, _bas, 90f))
+        {
+            e.Graphics.FillPath(accentBrush, accentPath);
+        }
+
+        // Pastille pastel avec icône à droite
+        int iconSize = 46;
+        var iconCircle = new Rectangle(rect.Right - iconSize - 16, rect.Y + (rect.Height - iconSize) / 2, iconSize, iconSize);
+        using (var circleBrush = new SolidBrush(Color.FromArgb(26, _haut)))
+        {
+            e.Graphics.FillEllipse(circleBrush, iconCircle);
+        }
+        DessinerGrandeIconeCarte(e.Graphics, iconCircle, _icone, _haut);
+
+        string texteValeur = _valeur.ToString("N0").Replace(",", " ").Replace("\u00A0", " ");
+        int textLeft = rect.X + 26;
+        int textWidth = Math.Max(80, iconCircle.Left - textLeft - 8);
+
+        if (_valeurAuDessus)
+        {
+            TextRenderer.DrawText(
+                e.Graphics,
+                texteValeur,
+                new Font("Segoe UI", 21f, FontStyle.Bold),
+                new Rectangle(textLeft, rect.Y + 14, textWidth, 38),
+                UiStyle.Texte,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                _titre.ToUpperInvariant(),
+                new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(textLeft, rect.Y + 52, textWidth, 24),
+                Color.FromArgb(100, 116, 139),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        }
+        else
+        {
+            TextRenderer.DrawText(
+                e.Graphics,
+                _titre.ToUpperInvariant(),
+                new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(textLeft, rect.Y + 14, textWidth, 22),
+                Color.FromArgb(100, 116, 139),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                texteValeur,
+                new Font("Segoe UI", 22f, FontStyle.Bold),
+                new Rectangle(textLeft, rect.Y + 36, textWidth, 40),
+                UiStyle.Texte,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        }
+    }
+
+    private static void DessinerGrandeIconeCarte(Graphics g, Rectangle rect, IconeMenu icone, Color couleur)
+    {
+        using var brush = new SolidBrush(couleur);
+        using var pen = new Pen(couleur, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        int cx = rect.X + rect.Width / 2;
+        int cy = rect.Y + rect.Height / 2;
+
+        switch (icone)
+        {
+            case IconeMenu.Etudiants:
+                g.FillEllipse(brush, cx - 7, cy - 10, 9, 9);
+                g.FillPie(brush, cx - 12, cy, 19, 15, 180, 180);
+                g.FillEllipse(brush, cx + 2, cy - 7, 7, 7);
+                g.FillPie(brush, cx - 1, cy + 2, 14, 12, 180, 180);
+                break;
+
+            case IconeMenu.Cours:
+                Point[] pageG = [new(cx - 10, cy - 8), new(cx - 1, cy - 5), new(cx - 1, cy + 8), new(cx - 10, cy + 6)];
+                Point[] pageD = [new(cx + 1, cy - 5), new(cx + 10, cy - 8), new(cx + 10, cy + 6), new(cx + 1, cy + 8)];
+                g.FillPolygon(brush, pageG);
+                g.FillPolygon(brush, pageD);
+                break;
+
+            case IconeMenu.Enseignants:
+                g.FillEllipse(brush, cx - 5, cy - 10, 10, 10);
+                g.FillPie(brush, cx - 11, cy + 1, 22, 16, 180, 180);
+                break;
+
+            case IconeMenu.Inscriptions:
+                g.DrawRectangle(pen, cx - 8, cy - 8, 16, 18);
+                g.FillRectangle(brush, cx - 4, cy - 11, 8, 4);
+                g.DrawLine(pen, cx - 4, cy - 1, cx + 4, cy - 1);
+                g.DrawLine(pen, cx - 4, cy + 3, cx + 4, cy + 3);
+                g.DrawLine(pen, cx - 4, cy + 7, cx + 1, cy + 7);
                 break;
         }
     }
@@ -1257,9 +1516,9 @@ internal sealed class PanneauGraphiqueBarres : PanneauArrondi
         _l1 = l1;
         _l2 = l2;
         _l3 = l3;
-        Rayon = 12;
+        Rayon = 14;
         CouleurFond = Color.White;
-        CouleurBordure = Color.FromArgb(222, 226, 235);
+        CouleurBordure = Color.FromArgb(226, 232, 240);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -1272,68 +1531,94 @@ internal sealed class PanneauGraphiqueBarres : PanneauArrondi
             g,
             "Inscriptions par niveau",
             new Font("Segoe UI", 12.5f, FontStyle.Bold),
-            new Rectangle(18, 14, Width - 36, 28),
+            new Rectangle(20, 14, Width - 40, 26),
             UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        int total = Math.Max(1, _l1 + _l2 + _l3);
+        TextRenderer.DrawText(
+            g,
+            $"Total : {total} inscrits",
+            new Font("Segoe UI", 9f),
+            new Rectangle(20, 38, Width - 40, 20),
+            Color.FromArgb(100, 116, 139),
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
         int chartLeft = 48;
         int chartRight = Width - 26;
-        int chartTop = 64;
-        int chartBottom = Height - 38;
+        int chartTop = 78;
+        int chartBottom = Height - 44;
         int chartH = Math.Max(60, chartBottom - chartTop);
         int chartW = Math.Max(120, chartRight - chartLeft);
 
-        using var gridPen = new Pen(Color.FromArgb(234, 237, 243), 1f);
-        using var axisPen = new Pen(Color.FromArgb(195, 202, 214), 1.2f);
-        string[] yLabels = ["0", "150", "300", "450"];
-        for (int i = 0; i < yLabels.Length; i++)
+        int rawMax = Math.Max(4, Math.Max(_l1, Math.Max(_l2, _l3)));
+        int step = rawMax <= 12 ? 4 : rawMax <= 30 ? 5 : rawMax <= 100 ? 25 : 150;
+        int maxVal = ((rawMax + step - 1) / step) * step;
+        if (maxVal == rawMax) maxVal += step;
+
+        using var gridPen = new Pen(Color.FromArgb(238, 242, 247), 1f) { DashStyle = DashStyle.Dash };
+        using var axisPen = new Pen(Color.FromArgb(203, 213, 225), 1.2f);
+        const int ticks = 4;
+        for (int i = 0; i <= ticks; i++)
         {
-            int y = chartBottom - i * chartH / (yLabels.Length - 1);
+            int valTick = (int)Math.Round(maxVal * (i / (double)ticks));
+            int y = chartBottom - i * chartH / ticks;
             g.DrawLine(i == 0 ? axisPen : gridPen, chartLeft, y, chartRight, y);
             TextRenderer.DrawText(
                 g,
-                yLabels[i],
-                new Font("Segoe UI", 8f),
-                new Rectangle(8, y - 10, 36, 20),
-                UiStyle.Gris,
+                valTick.ToString(),
+                new Font("Segoe UI", 8.5f),
+                new Rectangle(6, y - 10, 36, 20),
+                Color.FromArgb(100, 116, 139),
                 TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
         }
 
-        g.DrawLine(axisPen, chartLeft, chartTop, chartLeft, chartBottom);
+        (string Niveau, int Valeur, Color Haut, Color Bas)[] barres =
+        [
+            ("Licence 1", _l1, Color.FromArgb(59, 130, 246), Color.FromArgb(37, 99, 235)),
+            ("Licence 2", _l2, Color.FromArgb(214, 34, 40), Color.FromArgb(156, 16, 22)),
+            ("Licence 3", _l3, Color.FromArgb(16, 185, 129), Color.FromArgb(5, 150, 105))
+        ];
 
-        (string Niveau, int Valeur)[] barres = [("L1", _l1), ("L2", _l2), ("L3", _l3)];
-        int maxVal = Math.Max(480, Math.Max(_l1, Math.Max(_l2, _l3)) + 40);
         int colW = chartW / 3;
-        int barW = Math.Min(86, Math.Max(44, colW - 34));
+        int barW = Math.Min(68, Math.Max(36, colW - 44));
 
         for (int i = 0; i < barres.Length; i++)
         {
             int center = chartLeft + i * colW + colW / 2;
-            int barH = Math.Max(14, (int)Math.Round(barres[i].Valeur * (double)chartH / maxVal));
-            var barRect = new Rectangle(center - barW / 2, chartBottom - barH, barW, barH);
 
-            using (var barPath = UiStyle.CreerCheminArrondi(barRect, 6))
-            using (var barBrush = new LinearGradientBrush(barRect, Color.FromArgb(35, 124, 220), Color.FromArgb(22, 96, 190), 90f))
-            using (var barBorder = new Pen(Color.FromArgb(20, 86, 172), 1f))
+            // Piste de fond subtile
+            var trackRect = new Rectangle(center - barW / 2, chartTop, barW, chartH);
+            using (var trackPath = UiStyle.CreerCheminArrondi(trackRect, 8))
+            using (var trackBrush = new SolidBrush(Color.FromArgb(244, 247, 250)))
             {
-                g.FillPath(barBrush, barPath);
-                g.DrawPath(barBorder, barPath);
+                g.FillPath(trackBrush, trackPath);
             }
 
+            int barH = barres[i].Valeur == 0 ? 4 : Math.Max(14, (int)Math.Round(barres[i].Valeur * (double)chartH / maxVal));
+            var barRect = new Rectangle(center - barW / 2, chartBottom - barH, barW, barH);
+
+            using (var barPath = UiStyle.CreerCheminArrondi(barRect, 8))
+            using (var barBrush = new LinearGradientBrush(barRect, barres[i].Haut, barres[i].Bas, 90f))
+            {
+                g.FillPath(barBrush, barPath);
+            }
+
+            int pct = (int)Math.Round(barres[i].Valeur * 100.0 / total);
             TextRenderer.DrawText(
                 g,
-                barres[i].Valeur.ToString(),
-                new Font("Segoe UI", 11f, FontStyle.Bold),
-                new Rectangle(center - 40, barRect.Y - 26, 80, 24),
+                $"{barres[i].Valeur} ({pct}%)",
+                new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                new Rectangle(center - 46, Math.Max(chartTop - 22, barRect.Y - 24), 92, 22),
                 UiStyle.Texte,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
             TextRenderer.DrawText(
                 g,
                 barres[i].Niveau,
-                new Font("Segoe UI", 10.5f, FontStyle.Bold),
-                new Rectangle(center - 30, chartBottom + 6, 60, 24),
-                UiStyle.Texte,
+                new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                new Rectangle(center - 44, chartBottom + 8, 88, 22),
+                Color.FromArgb(51, 65, 85),
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
     }
@@ -1348,9 +1633,9 @@ internal sealed class PanneauGraphiqueCamembert : PanneauArrondi
     {
         _tauxPresence = Math.Clamp(tauxPresence, 0, 100);
         _tauxAbsence = Math.Clamp(tauxAbsence, 0, 100);
-        Rayon = 12;
+        Rayon = 14;
         CouleurFond = Color.White;
-        CouleurBordure = Color.FromArgb(222, 226, 235);
+        CouleurBordure = Color.FromArgb(226, 232, 240);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -1361,68 +1646,720 @@ internal sealed class PanneauGraphiqueCamembert : PanneauArrondi
 
         TextRenderer.DrawText(
             g,
-            "Taux de présence (ce mois)",
+            "Taux de présence",
             new Font("Segoe UI", 12.5f, FontStyle.Bold),
-            new Rectangle(18, 14, Width - 36, 28),
+            new Rectangle(20, 14, Width - 40, 26),
             UiStyle.Texte,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
-        int diameter = Math.Min(165, Math.Max(110, Math.Min(Width / 2 - 20, Height - 74)));
-        var pieRect = new Rectangle(30, 56 + (Height - 66 - diameter) / 2, diameter, diameter);
+        TextRenderer.DrawText(
+            g,
+            "Suivi global des séances enregistrées",
+            new Font("Segoe UI", 9f),
+            new Rectangle(20, 38, Width - 40, 20),
+            Color.FromArgb(100, 116, 139),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
-        float sweepAbsence = Math.Max(12f, _tauxAbsence * 3.6f);
+        int diameter = Math.Min(172, Math.Max(110, Math.Min(Width / 2 + 10, Height - 96)));
+        var donutRect = new Rectangle(28, 68 + Math.Max(0, (Height - 84 - diameter) / 2), diameter, diameter);
+
+        Color colPresence = Color.FromArgb(16, 185, 129);
+        Color colAbsence = Color.FromArgb(239, 68, 68);
+
+        float sweepAbsence = _tauxAbsence <= 0 ? 0f : Math.Max(8f, _tauxAbsence * 3.6f);
         float sweepPresence = 360f - sweepAbsence;
 
-        using (var brushPresence = new SolidBrush(Color.FromArgb(22, 108, 206)))
-        using (var brushAbsence = new SolidBrush(Color.FromArgb(220, 26, 34)))
-        using (var penBorder = new Pen(Color.FromArgb(18, 82, 160), 1.2f))
-        using (var penSep = new Pen(Color.FromArgb(245, 248, 255), 1.5f))
+        using (var penTrack = new Pen(Color.FromArgb(241, 245, 249), 22f))
         {
-            g.FillPie(brushPresence, pieRect, -90f, sweepPresence);
-            g.FillPie(brushAbsence, pieRect, -90f + sweepPresence, sweepAbsence);
-            g.DrawEllipse(penBorder, pieRect);
-
-            int cx = pieRect.X + diameter / 2;
-            int cy = pieRect.Y + diameter / 2;
-            double r = diameter / 2.0;
-            double radSep = (-90.0 + sweepPresence) * Math.PI / 180.0;
-            g.DrawLine(penSep, cx, cy, cx, pieRect.Y);
-            g.DrawLine(penSep, cx, cy, cx + (int)Math.Round(Math.Cos(radSep) * r), cy + (int)Math.Round(Math.Sin(radSep) * r));
+            g.DrawEllipse(penTrack, donutRect);
         }
 
-        // Texte "92%" dans la part bleue comme sur la maquette 12
+        var arcRect = Rectangle.Inflate(donutRect, -11, -11);
+        using (var penPres = new Pen(colPresence, 22f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+        using (var penAbs = new Pen(colAbsence, 22f))
+        {
+            if (sweepAbsence > 0f)
+            {
+                g.DrawArc(penAbs, arcRect, -90f + sweepPresence, sweepAbsence);
+            }
+            g.DrawArc(penPres, arcRect, -90f, sweepPresence);
+        }
+
+        // Valeur centrale dans le Donut (sans chevauchement)
         TextRenderer.DrawText(
             g,
             $"{_tauxPresence}%",
-            new Font("Segoe UI", 13.5f, FontStyle.Bold),
-            new Rectangle(pieRect.X, pieRect.Y + diameter / 2, diameter, diameter / 2 - 8),
+            new Font("Segoe UI", 18f, FontStyle.Bold),
+            new Rectangle(donutRect.X, donutRect.Y + diameter / 2 - 26, diameter, 28),
+            UiStyle.Texte,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+        TextRenderer.DrawText(
+            g,
+            "Présence",
+            new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            new Rectangle(donutRect.X, donutRect.Y + diameter / 2 + 4, diameter, 18),
+            Color.FromArgb(100, 116, 139),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+        // Légende moderne à droite
+        int legX = donutRect.Right + 24;
+        int legW = Math.Max(110, Width - legX - 18);
+        int legY = donutRect.Y + diameter / 2 - 36;
+
+        DessinerLigneLegende(g, legX, legY, legW, colPresence, "Présents", $"{_tauxPresence} %");
+        DessinerLigneLegende(g, legX, legY + 42, legW, colAbsence, "Absents", $"{_tauxAbsence} %");
+    }
+
+    private static void DessinerLigneLegende(Graphics g, int x, int y, int width, Color couleur, string libelle, string valeur)
+    {
+        var box = new Rectangle(x, y, width, 32);
+        using (var path = UiStyle.CreerCheminArrondi(box, 8))
+        using (var fill = new SolidBrush(Color.FromArgb(248, 250, 252)))
+        {
+            g.FillPath(fill, path);
+        }
+        using (var dot = new SolidBrush(couleur))
+        {
+            g.FillEllipse(dot, x + 10, y + 11, 10, 10);
+        }
+        TextRenderer.DrawText(
+            g,
+            libelle,
+            new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            new Rectangle(x + 26, y, width - 80, 32),
+            UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        TextRenderer.DrawText(
+            g,
+            valeur,
+            new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            new Rectangle(x + width - 56, y, 48, 32),
+            couleur,
+            TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+    }
+}
+
+internal sealed class PanneauRepartitionFilieres : PanneauArrondi
+{
+    private readonly IReadOnlyList<(string Filiere, int Effectif)> _filieres;
+
+    public PanneauRepartitionFilieres(IReadOnlyList<(string Filiere, int Effectif)>? filieres)
+    {
+        _filieres = filieres ?? [];
+        Rayon = 14;
+        CouleurFond = Color.White;
+        CouleurBordure = Color.FromArgb(226, 232, 240);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        TextRenderer.DrawText(
+            g,
+            "Effectifs par filière",
+            new Font("Segoe UI", 12.5f, FontStyle.Bold),
+            new Rectangle(20, 14, Width - 40, 26),
+            UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        TextRenderer.DrawText(
+            g,
+            "Répartition des étudiants actifs",
+            new Font("Segoe UI", 9f),
+            new Rectangle(20, 38, Width - 40, 20),
+            Color.FromArgb(100, 116, 139),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        if (_filieres.Count == 0)
+        {
+            TextRenderer.DrawText(
+                g,
+                "Aucune donnée disponible",
+                new Font("Segoe UI", 9.5f),
+                new Rectangle(20, 80, Width - 40, 40),
+                UiStyle.Gris,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            return;
+        }
+
+        Color[] palette =
+        [
+            Color.FromArgb(186, 13, 20),
+            Color.FromArgb(37, 99, 235),
+            Color.FromArgb(16, 185, 129),
+            Color.FromArgb(245, 158, 11),
+            Color.FromArgb(139, 92, 246),
+            Color.FromArgb(20, 184, 166)
+        ];
+
+        int maxEff = Math.Max(1, _filieres.Max(f => f.Effectif));
+        int top = 72;
+        int rowH = Math.Min(42, Math.Max(28, (Height - top - 16) / _filieres.Count));
+
+        for (int i = 0; i < _filieres.Count; i++)
+        {
+            var (nom, eff) = _filieres[i];
+            int y = top + i * rowH;
+            Color col = palette[i % palette.Length];
+
+            TextRenderer.DrawText(
+                g,
+                nom,
+                new Font("Segoe UI", 9f, FontStyle.Bold),
+                new Rectangle(20, y, Width - 88, 18),
+                UiStyle.Texte,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+
+            TextRenderer.DrawText(
+                g,
+                eff.ToString(),
+                new Font("Segoe UI", 9f, FontStyle.Bold),
+                new Rectangle(Width - 64, y, 44, 18),
+                col,
+                TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+
+            var track = new Rectangle(20, y + 20, Width - 40, 7);
+            using (var trackPath = UiStyle.CreerCheminArrondi(track, 3))
+            using (var trackBrush = new SolidBrush(Color.FromArgb(241, 245, 249)))
+            {
+                g.FillPath(trackBrush, trackPath);
+            }
+
+            int fillW = eff == 0 ? 0 : Math.Max(10, (int)Math.Round(track.Width * (eff / (double)maxEff)));
+            if (fillW > 0)
+            {
+                var fillRect = new Rectangle(track.X, track.Y, fillW, track.Height);
+                using var fillPath = UiStyle.CreerCheminArrondi(fillRect, 3);
+                using var fillBrush = new SolidBrush(col);
+                g.FillPath(fillBrush, fillPath);
+            }
+        }
+    }
+}
+
+internal sealed class PanneauJaugeAssiduite : Panel
+{
+    private readonly int _tauxPresence;
+    private readonly int _presents;
+    private readonly int _absents;
+
+    public PanneauJaugeAssiduite(int tauxPresence, int presents, int absents)
+    {
+        _tauxPresence = Math.Clamp(tauxPresence, 0, 100);
+        _presents = presents;
+        _absents = absents;
+        DoubleBuffered = true;
+        BackColor = Color.Transparent;
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        var rect = new Rectangle(2, 2, Width - 5, Height - 5);
+        using var path = UiStyle.CreerCheminArrondi(rect, 16);
+        using (var bgBrush = new LinearGradientBrush(rect, Color.FromArgb(24, 31, 46), Color.FromArgb(48, 18, 28), 35f))
+        {
+            g.FillPath(bgBrush, path);
+        }
+
+        TextRenderer.DrawText(
+            g,
+            "INDICE D'ASSIDUITÉ",
+            new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            new Rectangle(20, 14, Width - 40, 20),
+            Color.FromArgb(148, 163, 184),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        int gaugeSize = Math.Min(196, Math.Max(130, Math.Min(Width - 50, (Height - 66) * 2 - 24)));
+        int gx = (Width - gaugeSize) / 2;
+        int gy = 40;
+        var arcRect = new Rectangle(gx, gy, gaugeSize, gaugeSize);
+
+        using (var penTrack = new Pen(Color.FromArgb(55, 255, 255, 255), 16f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+        {
+            g.DrawArc(penTrack, arcRect, 180f, 180f);
+        }
+
+        float sweep = Math.Max(4f, 180f * (_tauxPresence / 100f));
+        Color arcColor = _tauxPresence >= 75 ? Color.FromArgb(52, 211, 153) : Color.FromArgb(251, 191, 36);
+        using (var penVal = new Pen(arcColor, 16f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+        {
+            g.DrawArc(penVal, arcRect, 180f, sweep);
+        }
+
+        TextRenderer.DrawText(
+            g,
+            $"{_tauxPresence}%",
+            new Font("Segoe UI", 24f, FontStyle.Bold),
+            new Rectangle(gx, gy + gaugeSize / 4 - 8, gaugeSize, 40),
             Color.White,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
-        // Légende à droite du camembert
-        int legX = pieRect.Right + 26;
-        int legY = pieRect.Y + diameter / 2 - 32;
+        TextRenderer.DrawText(
+            g,
+            "Taux de présence",
+            new Font("Segoe UI", 8.5f),
+            new Rectangle(gx, gy + gaugeSize / 4 + 32, gaugeSize, 20),
+            Color.FromArgb(203, 213, 225),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
-        using (var bBleu = new SolidBrush(Color.FromArgb(22, 108, 206)))
-        using (var bRouge = new SolidBrush(Color.FromArgb(220, 26, 34)))
+        // Compteurs en bas
+        int pillY = Height - 42;
+        int halfW = (Width - 52) / 2;
+        DessinerMiniBadge(g, 20, pillY, halfW, Color.FromArgb(52, 211, 153), $"{_presents} Présents");
+        DessinerMiniBadge(g, 32 + halfW, pillY, halfW, Color.FromArgb(248, 113, 113), $"{_absents} Absents");
+    }
+
+    private static void DessinerMiniBadge(Graphics g, int x, int y, int w, Color dot, string texte)
+    {
+        var r = new Rectangle(x, y, w, 26);
+        using (var p = UiStyle.CreerCheminArrondi(r, 8))
+        using (var b = new SolidBrush(Color.FromArgb(30, 255, 255, 255)))
         {
-            g.FillEllipse(bBleu, legX, legY, 16, 16);
+            g.FillPath(b, p);
+        }
+        using (var db = new SolidBrush(dot))
+        {
+            g.FillEllipse(db, x + 10, y + 9, 8, 8);
+        }
+        TextRenderer.DrawText(
+            g,
+            texte,
+            new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            new Rectangle(x + 22, y, w - 26, 26),
+            Color.White,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+    }
+}
+
+internal sealed class PanneauCourbeTendance : PanneauArrondi
+{
+    private readonly IReadOnlyList<(string DateLabel, int Presents, int Absents)> _points;
+
+    public PanneauCourbeTendance(IReadOnlyList<(string DateLabel, int Presents, int Absents)>? points)
+    {
+        _points = points is { Count: > 0 }
+            ? points
+            : [("03/11", 8, 2), ("05/11", 10, 2), ("06/11", 12, 3), ("09/11", 11, 1), ("11/11", 14, 2), ("12/11", 34, 6)];
+        Rayon = 14;
+        CouleurFond = Color.White;
+        CouleurBordure = Color.FromArgb(226, 232, 240);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        TextRenderer.DrawText(
+            g,
+            "Évolution des présences & absences",
+            new Font("Segoe UI", 12.5f, FontStyle.Bold),
+            new Rectangle(20, 14, Width - 220, 26),
+            UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+
+        TextRenderer.DrawText(
+            g,
+            "Courbe chronologique des séances enregistrées",
+            new Font("Segoe UI", 9f),
+            new Rectangle(20, 38, Width - 220, 20),
+            Color.FromArgb(100, 116, 139),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        // Légende en haut à droite
+        using (var bPres = new SolidBrush(Color.FromArgb(16, 185, 129)))
+        using (var bAbs = new SolidBrush(Color.FromArgb(239, 68, 68)))
+        {
+            g.FillEllipse(bPres, Width - 185, 22, 10, 10);
+            TextRenderer.DrawText(g, "Présents", new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(Width - 170, 16, 70, 22), UiStyle.Texte, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            g.FillEllipse(bAbs, Width - 95, 22, 10, 10);
+            TextRenderer.DrawText(g, "Absents", new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(Width - 80, 16, 68, 22), UiStyle.Texte, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        }
+
+        int left = 46;
+        int right = Width - 24;
+        int top = 74;
+        int bottom = Height - 42;
+        int h = Math.Max(60, bottom - top);
+        int w = Math.Max(120, right - left);
+
+        int maxVal = Math.Max(4, _points.Max(p => Math.Max(p.Presents, p.Absents)));
+        int step = maxVal <= 12 ? 4 : maxVal <= 30 ? 5 : 10;
+        maxVal = ((maxVal + step - 1) / step) * step;
+
+        using var gridPen = new Pen(Color.FromArgb(238, 242, 247), 1f) { DashStyle = DashStyle.Dash };
+        using var axisPen = new Pen(Color.FromArgb(203, 213, 225), 1.2f);
+        for (int i = 0; i <= 4; i++)
+        {
+            int y = bottom - i * h / 4;
+            int val = (int)Math.Round(maxVal * (i / 4.0));
+            g.DrawLine(i == 0 ? axisPen : gridPen, left, y, right, y);
+            TextRenderer.DrawText(g, val.ToString(), new Font("Segoe UI", 8.5f),
+                new Rectangle(6, y - 10, 34, 20), Color.FromArgb(100, 116, 139), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+        }
+
+        int n = _points.Count;
+        PointF[] ptsPres = new PointF[n];
+        PointF[] ptsAbs = new PointF[n];
+
+        for (int i = 0; i < n; i++)
+        {
+            float x = n == 1 ? left + w / 2f : left + i * (w / (float)(n - 1));
+            ptsPres[i] = new PointF(x, bottom - (float)(_points[i].Presents * h / (double)maxVal));
+            ptsAbs[i] = new PointF(x, bottom - (float)(_points[i].Absents * h / (double)maxVal));
+
             TextRenderer.DrawText(
                 g,
-                $"Présences : {_tauxPresence} %",
-                new Font("Segoe UI", 10.5f, FontStyle.Bold),
-                new Rectangle(legX + 24, legY - 3, Width - legX - 30, 24),
+                _points[i].DateLabel,
+                new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle((int)x - 26, bottom + 8, 52, 20),
+                Color.FromArgb(71, 85, 105),
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+
+        if (n >= 2)
+        {
+            // Remplissage dégradé sous la courbe des présences
+            using var areaPath = new GraphicsPath();
+            areaPath.AddCurve(ptsPres, 0.35f);
+            areaPath.AddLine(ptsPres[^1].X, bottom, ptsPres[0].X, bottom);
+            areaPath.CloseFigure();
+            using var areaBrush = new LinearGradientBrush(
+                new Rectangle(left, top, w, h),
+                Color.FromArgb(70, 16, 185, 129),
+                Color.FromArgb(5, 16, 185, 129),
+                90f);
+            g.FillPath(areaBrush, areaPath);
+
+            using var penPres = new Pen(Color.FromArgb(16, 185, 129), 3f);
+            using var penAbs = new Pen(Color.FromArgb(239, 68, 68), 2.4f) { DashStyle = DashStyle.Solid };
+            g.DrawCurve(penPres, ptsPres, 0.35f);
+            g.DrawCurve(penAbs, ptsAbs, 0.35f);
+        }
+
+        // Points sur les courbes
+        for (int i = 0; i < n; i++)
+        {
+            g.FillEllipse(Brushes.White, ptsPres[i].X - 4.5f, ptsPres[i].Y - 4.5f, 9f, 9f);
+            using (var p = new Pen(Color.FromArgb(16, 185, 129), 2.5f))
+                g.DrawEllipse(p, ptsPres[i].X - 4.5f, ptsPres[i].Y - 4.5f, 9f, 9f);
+
+            g.FillEllipse(Brushes.White, ptsAbs[i].X - 3.5f, ptsAbs[i].Y - 3.5f, 7f, 7f);
+            using (var p = new Pen(Color.FromArgb(239, 68, 68), 2f))
+                g.DrawEllipse(p, ptsAbs[i].X - 3.5f, ptsAbs[i].Y - 3.5f, 7f, 7f);
+        }
+    }
+}
+
+internal sealed class PanneauNiveauxEtPlanning : PanneauArrondi
+{
+    private readonly int _l1;
+    private readonly int _l2;
+    private readonly int _l3;
+    private readonly IReadOnlyList<(string Jour, int Seances)> _seances;
+
+    public PanneauNiveauxEtPlanning(int l1, int l2, int l3, IReadOnlyList<(string Jour, int Seances)>? seances)
+    {
+        _l1 = l1;
+        _l2 = l2;
+        _l3 = l3;
+        _seances = seances is { Count: > 0 }
+            ? seances
+            : [("Lun", 3), ("Mar", 3), ("Mer", 3), ("Jeu", 3), ("Ven", 3)];
+        Rayon = 14;
+        CouleurFond = Color.White;
+        CouleurBordure = Color.FromArgb(226, 232, 240);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        // 1. Barre segmentée proportionnelle L1 / L2 / L3
+        TextRenderer.DrawText(
+            g,
+            "Répartition par niveau",
+            new Font("Segoe UI", 11.5f, FontStyle.Bold),
+            new Rectangle(20, 12, Width - 40, 24),
+            UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        int total = Math.Max(1, _l1 + _l2 + _l3);
+        int barW = Width - 40;
+        int barY = 44;
+        int w1 = Math.Max(18, (int)Math.Round(barW * (_l1 / (double)total)));
+        int w2 = Math.Max(18, (int)Math.Round(barW * (_l2 / (double)total)));
+        int w3 = Math.Max(18, barW - w1 - w2);
+
+        Color c1 = Color.FromArgb(37, 99, 235);
+        Color c2 = Color.FromArgb(186, 13, 20);
+        Color c3 = Color.FromArgb(16, 185, 129);
+
+        using (var b1 = new SolidBrush(c1))
+        using (var b2 = new SolidBrush(c2))
+        using (var b3 = new SolidBrush(c3))
+        using (var clipPath = UiStyle.CreerCheminArrondi(new Rectangle(20, barY, barW, 18), 9))
+        {
+            g.SetClip(clipPath);
+            g.FillRectangle(b1, 20, barY, w1, 18);
+            g.FillRectangle(b2, 20 + w1, barY, w2, 18);
+            g.FillRectangle(b3, 20 + w1 + w2, barY, w3, 18);
+            g.ResetClip();
+        }
+
+        int legY = barY + 24;
+        int itemW = barW / 3;
+        DessinerLegendeNiveau(g, 20, legY, itemW, c1, $"L1 : {_l1}");
+        DessinerLegendeNiveau(g, 20 + itemW, legY, itemW, c2, $"L2 : {_l2}");
+        DessinerLegendeNiveau(g, 20 + itemW * 2, legY, itemW, c3, $"L3 : {_l3}");
+
+        // 2. Diagramme Lollipop hebdomadaire (Séances par jour)
+        int top2 = 104;
+        TextRenderer.DrawText(
+            g,
+            "Charge hebdomadaire (séances / jour)",
+            new Font("Segoe UI", 11.5f, FontStyle.Bold),
+            new Rectangle(20, top2, Width - 40, 24),
+            UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        int chartTop = top2 + 46;
+        int chartBottom = Height - 32;
+        int chartH = Math.Max(40, chartBottom - chartTop);
+        int maxS = Math.Max(2, _seances.Max(s => s.Seances));
+        int colW = barW / Math.Max(1, _seances.Count);
+
+        using var lineBase = new Pen(Color.FromArgb(226, 232, 240), 1.5f);
+        g.DrawLine(lineBase, 20, chartBottom, Width - 20, chartBottom);
+
+        for (int i = 0; i < _seances.Count; i++)
+        {
+            var (jour, nb) = _seances[i];
+            int cx = 20 + i * colW + colW / 2;
+            int stemH = nb == 0 ? 4 : Math.Max(14, (int)Math.Round(chartH * (nb / (double)maxS)));
+            int cy = chartBottom - stemH;
+
+            using var stemPen = new Pen(Color.FromArgb(148, 163, 184), 3f);
+            g.DrawLine(stemPen, cx, chartBottom, cx, cy);
+
+            using var headBrush = new SolidBrush(Color.FromArgb(186, 13, 20));
+            g.FillEllipse(headBrush, cx - 11, cy - 11, 22, 22);
+
+            TextRenderer.DrawText(g, nb.ToString(), new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(cx - 12, cy - 12, 24, 24), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+            TextRenderer.DrawText(g, jour, new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(cx - 22, chartBottom + 5, 44, 20), Color.FromArgb(71, 85, 105), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        }
+    }
+
+    private static void DessinerLegendeNiveau(Graphics g, int x, int y, int w, Color c, string txt)
+    {
+        using var b = new SolidBrush(c);
+        g.FillEllipse(b, x, y + 5, 8, 8);
+        TextRenderer.DrawText(g, txt, new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            new Rectangle(x + 12, y, w - 14, 18), UiStyle.Texte, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+    }
+}
+
+internal sealed class PanneauDiagrammeRadial : PanneauArrondi
+{
+    private readonly IReadOnlyList<(string Filiere, int Effectif)> _filieres;
+    private readonly int _totalEtudiants;
+    private readonly int _l1;
+    private readonly int _l2;
+    private readonly int _l3;
+
+    public PanneauDiagrammeRadial(
+        IReadOnlyList<(string Filiere, int Effectif)>? filieres,
+        int totalEtudiants,
+        int l1,
+        int l2,
+        int l3)
+    {
+        _filieres = filieres is { Count: > 0 }
+            ? filieres.Take(6).ToList()
+            : [("Génie Logiciel", 12), ("Informatique", 10), ("Marketing", 9), ("Réseaux", 8), ("Data Science & IA", 7), ("Cybersécurité", 5)];
+        _totalEtudiants = Math.Max(1, totalEtudiants);
+        _l1 = l1;
+        _l2 = l2;
+        _l3 = l3;
+        Rayon = 14;
+        CouleurFond = Color.White;
+        CouleurBordure = Color.FromArgb(226, 232, 240);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        TextRenderer.DrawText(
+            g,
+            "Répartition radiale des filières",
+            new Font("Segoe UI", 12.5f, FontStyle.Bold),
+            new Rectangle(20, 14, Width - 40, 26),
+            UiStyle.Texte,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+
+        TextRenderer.DrawText(
+            g,
+            $"Anneaux proportionnels  •  L1 : {_l1}  •  L2 : {_l2}  •  L3 : {_l3}",
+            new Font("Segoe UI", 9f),
+            new Rectangle(20, 43, Width - 40, 20),
+            Color.FromArgb(100, 116, 139),
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+
+        Color[] palette =
+        [
+            Color.FromArgb(186, 13, 20),
+            Color.FromArgb(37, 99, 235),
+            Color.FromArgb(16, 185, 129),
+            Color.FromArgb(245, 158, 11),
+            Color.FromArgb(139, 92, 246),
+            Color.FromArgb(20, 184, 166)
+        ];
+
+        int footerH = 74;
+        int availH = Math.Max(180, Height - 74 - footerH);
+        int maxOuter = Math.Min(260, Math.Max(155, Math.Min(Width / 2 - 14, availH - 12)));
+        int cx = 24 + maxOuter / 2;
+        int cy = 70 + availH / 2;
+        int maxEff = Math.Max(1, _filieres.Max(f => f.Effectif));
+
+        int ringThickness = Math.Max(7, Math.Min(11, (maxOuter / 2 - 36) / Math.Max(1, _filieres.Count * 2)));
+        int ringStep = ringThickness + 5;
+
+        for (int i = 0; i < _filieres.Count; i++)
+        {
+            int radius = maxOuter / 2 - i * ringStep;
+            if (radius < 30) break;
+
+            var rect = new Rectangle(cx - radius, cy - radius, radius * 2, radius * 2);
+            using (var trackPen = new Pen(Color.FromArgb(241, 245, 249), ringThickness) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            {
+                g.DrawEllipse(trackPen, rect);
+            }
+
+            float ratio = Math.Clamp(_filieres[i].Effectif / (float)maxEff, 0.14f, 1f);
+            float sweep = 275f * ratio;
+            using var arcPen = new Pen(palette[i % palette.Length], ringThickness) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawArc(arcPen, rect, -90f, sweep);
+        }
+
+        // Total au centre des anneaux
+        TextRenderer.DrawText(
+            g,
+            _totalEtudiants.ToString(),
+            new Font("Segoe UI", 14.5f, FontStyle.Bold),
+            new Rectangle(cx - 36, cy - 26, 72, 28),
+            UiStyle.Texte,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(
+            g,
+            "inscrits",
+            new Font("Segoe UI", 8f, FontStyle.Bold),
+            new Rectangle(cx - 36, cy + 4, 72, 16),
+            Color.FromArgb(100, 116, 139),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+
+        // Légende détaillée à droite
+        int legX = cx + maxOuter / 2 + 20;
+        int legW = Math.Max(130, Width - legX - 18);
+        int rowH = Math.Min(42, Math.Max(30, availH / Math.Max(1, _filieres.Count)));
+        int legTop = cy - (_filieres.Count * rowH) / 2;
+
+        for (int i = 0; i < _filieres.Count; i++)
+        {
+            var (nom, eff) = _filieres[i];
+            int y = legTop + i * rowH;
+            Color col = palette[i % palette.Length];
+            int pct = (int)Math.Round(eff * 100.0 / _totalEtudiants);
+
+            var card = new Rectangle(legX, y, legW, rowH - 6);
+            using (var p = UiStyle.CreerCheminArrondi(card, 8))
+            using (var b = new SolidBrush(Color.FromArgb(248, 250, 252)))
+            {
+                g.FillPath(b, p);
+            }
+
+            using (var dot = new SolidBrush(col))
+            {
+                g.FillEllipse(dot, legX + 10, y + (card.Height - 10) / 2, 10, 10);
+            }
+
+            const int valColW = 78;
+            TextRenderer.DrawText(
+                g,
+                nom,
+                new Font("Segoe UI", 9f, FontStyle.Bold),
+                new Rectangle(legX + 26, y, Math.Max(40, legW - 26 - valColW - 8), card.Height),
                 UiStyle.Texte,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+
+            TextRenderer.DrawText(
+                g,
+                $"{eff} ({pct}%)",
+                new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(legX + legW - valColW - 8, y, valColW, card.Height),
+                col,
+                TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+        }
+
+        // Bandeau inférieur des 3 niveaux (L1 / L2 / L3) pour équilibrer la carte
+        int footY = Height - footerH + 6;
+        int boxGap = 10;
+        int boxW = (Width - 40 - boxGap * 2) / 3;
+        (string Titre, int Val, Color Col)[] niveaux =
+        [
+            ("LICENCE 1", _l1, Color.FromArgb(37, 99, 235)),
+            ("LICENCE 2", _l2, Color.FromArgb(186, 13, 20)),
+            ("LICENCE 3", _l3, Color.FromArgb(16, 185, 129))
+        ];
+        int totalNiv = Math.Max(1, _l1 + _l2 + _l3);
+        for (int i = 0; i < 3; i++)
+        {
+            int bx = 20 + i * (boxW + boxGap);
+            var bRect = new Rectangle(bx, footY, boxW, 52);
+            using (var bp = UiStyle.CreerCheminArrondi(bRect, 10))
+            using (var bb = new SolidBrush(Color.FromArgb(248, 250, 252)))
+            using (var bPen = new Pen(Color.FromArgb(226, 232, 240), 1f))
+            {
+                g.FillPath(bb, bp);
+                g.DrawPath(bPen, bp);
+            }
+
+            TextRenderer.DrawText(g, niveaux[i].Titre, new Font("Segoe UI", 7.5f, FontStyle.Bold),
+                new Rectangle(bx + 12, footY + 6, boxW - 56, 16), Color.FromArgb(100, 116, 139),
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
-            g.FillEllipse(bRouge, legX, legY + 38, 16, 16);
-            TextRenderer.DrawText(
-                g,
-                $"Absences : {_tauxAbsence} %",
-                new Font("Segoe UI", 10.5f, FontStyle.Bold),
-                new Rectangle(legX + 24, legY + 35, Width - legX - 30, 24),
-                UiStyle.Texte,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            TextRenderer.DrawText(g, niveaux[i].Val.ToString(), new Font("Segoe UI", 11.5f, FontStyle.Bold),
+                new Rectangle(bx + boxW - 48, footY + 4, 38, 22), niveaux[i].Col,
+                TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+
+            var track = new Rectangle(bx + 12, footY + 34, boxW - 24, 6);
+            using (var tp = UiStyle.CreerCheminArrondi(track, 3))
+            using (var tb = new SolidBrush(Color.FromArgb(226, 232, 240)))
+                g.FillPath(tb, tp);
+
+            int fw = Math.Max(8, (int)Math.Round(track.Width * (niveaux[i].Val / (double)totalNiv)));
+            using (var fp = UiStyle.CreerCheminArrondi(new Rectangle(track.X, track.Y, fw, track.Height), 3))
+            using (var fb = new SolidBrush(niveaux[i].Col))
+                g.FillPath(fb, fp);
         }
     }
 }

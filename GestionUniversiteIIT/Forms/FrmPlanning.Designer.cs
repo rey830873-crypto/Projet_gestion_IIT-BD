@@ -4,6 +4,8 @@ public sealed partial class FrmPlanning : Form
 {
     private readonly ComboBox _semaine = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly ComboBox _filiere = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly ComboBox _niveau = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly Panel _pnlEnteteOfficielle = new();
     private readonly DataGridView _grille = new();
 
     private void InitializeComponent()

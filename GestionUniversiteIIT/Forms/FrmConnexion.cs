@@ -16,7 +16,11 @@ public sealed partial class FrmConnexion : Form
         ChargerLogo();
         InitializeComponent();
         ConstruireInterface();
-        Shown += (_, _) => VerifierSignalConnexionAsync();
+        Shown += (_, _) =>
+        {
+            DatabaseSeeder.SynchroniserEtudiantsReels();
+            VerifierSignalConnexionAsync();
+        };
     }
 
     private void ConstruireInterface()
@@ -129,10 +133,12 @@ public sealed partial class FrmConnexion : Form
             "Nom d'utilisateur",
             estMotDePasse: false,
             onToggleEye: null);
+        _nom.Text = "admin";
         boxNom.Location = new Point(32, 130);
         card.Controls.Add(boxNom);
 
         _motDePasse.UseSystemPasswordChar = true;
+        _motDePasse.Text = "AdminIIT2026!";
         var boxMdp = CreerChampSaisie(
             _motDePasse,
             "Mot de passe",

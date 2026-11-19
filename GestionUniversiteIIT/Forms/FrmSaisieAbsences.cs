@@ -9,7 +9,7 @@ public sealed partial class FrmSaisieAbsences : Form
 {
     private readonly AbsenceService _service = new();
     private readonly Action? _ouvrirHistorique;
-    private DateTime _dateValeur = new(2026, 11, 6);
+    private DateTime _dateValeur = DateTime.Today;
     private DataTable? _etudiants;
 
     public FrmSaisieAbsences() : this(null) { }
@@ -28,14 +28,18 @@ public sealed partial class FrmSaisieAbsences : Form
 
     private void ConstruireInterface()
     {
+        BackColor = Color.FromArgb(246, 248, 252);
+        _dateTexte.Text = _dateValeur.ToString("dd/MM/yyyy");
+
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(26, 18, 26, 18),
             RowCount = 4,
             ColumnCount = 1,
-            BackColor = Color.White
+            BackColor = Color.FromArgb(246, 248, 252)
         };
+        UiStyle.AppliquerFondDesign(root);
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -54,7 +58,7 @@ public sealed partial class FrmSaisieAbsences : Form
             Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 2,
-            BackColor = Color.White,
+            BackColor = Color.Transparent,
             Margin = new Padding(0, 2, 0, 6)
         };
         filtersGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76f));
@@ -95,13 +99,38 @@ public sealed partial class FrmSaisieAbsences : Form
         card.Controls.Add(_grille);
         root.Controls.Add(card, 0, 2);
 
+        var footerBar = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
+
+        var leftBar = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Left,
+            AutoSize = true,
+            WrapContents = false,
+            Padding = new Padding(0, 10, 0, 0),
+            BackColor = Color.Transparent
+        };
+        _lblCompteur.AutoSize = true;
+        _lblCompteur.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+        _lblCompteur.ForeColor = UiStyle.Texte;
+        _lblCompteur.Margin = new Padding(2, 8, 16, 0);
+        leftBar.Controls.Add(_lblCompteur);
+
+        var btnTousPresents = UiStyle.BoutonArdoise("Tous présents", 136, 36);
+        btnTousPresents.Click += (_, _) => DefinirPresencePourTous(true);
+        var btnTousAbsents = UiStyle.BoutonArdoise("Tous absents", 130, 36);
+        btnTousAbsents.Click += (_, _) => DefinirPresencePourTous(false);
+        leftBar.Controls.Add(btnTousPresents);
+        leftBar.Controls.Add(btnTousAbsents);
+        footerBar.Controls.Add(leftBar);
+
         var actions = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Right,
+            AutoSize = true,
             FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false,
             Padding = new Padding(0, 8, 0, 0),
-            BackColor = Color.White
+            BackColor = Color.Transparent
         };
 
         var btnAnnuler = UiStyle.BoutonArdoise("Annuler", 132, 42);
@@ -118,7 +147,8 @@ public sealed partial class FrmSaisieAbsences : Form
 
         actions.Controls.Add(btnAnnuler);
         actions.Controls.Add(btnEnregistrer);
-        root.Controls.Add(actions, 0, 3);
+        footerBar.Controls.Add(actions);
+        root.Controls.Add(footerBar, 0, 3);
 
         Controls.Add(root);
     }
@@ -304,7 +334,33 @@ public sealed partial class FrmSaisieAbsences : Form
             bool actuel = Convert.ToBoolean(_etudiants.Rows[e.RowIndex]["Present"]);
             _etudiants.Rows[e.RowIndex]["Present"] = !actuel;
             _grille.InvalidateCell(e.ColumnIndex, e.RowIndex);
+            MettreAJourCompteur();
         };
+    }
+
+    private void DefinirPresencePourTous(bool present)
+    {
+        if (_etudiants is null) return;
+        foreach (DataRow row in _etudiants.Rows)
+        {
+            row["Present"] = present;
+        }
+        _grille.Invalidate();
+        MettreAJourCompteur();
+    }
+
+    private void MettreAJourCompteur()
+    {
+        if (_etudiants is null)
+        {
+            _lblCompteur.Text = "0 étudiant";
+            return;
+        }
+
+        int total = _etudiants.Rows.Count;
+        int presents = _etudiants.AsEnumerable().Count(r => r["Present"] is not DBNull && Convert.ToBoolean(r["Present"]));
+        int absents = total - presents;
+        _lblCompteur.Text = $"{total} étudiants  •  {presents} présents  •  {absents} absents";
     }
 
     private void ChargerFiltres()
@@ -338,10 +394,28 @@ public sealed partial class FrmSaisieAbsences : Form
             _cours.ValueMember = "CoursId";
         }
 
-        _filiere.Items.AddRange(["Génie Logiciel", "Marketing", "Informatique", "Réseaux"]);
-        _filiere.SelectedIndex = 0;
+        _filiere.Items.Clear();
+        _filiere.Items.Add("Toutes");
+        try
+        {
+            var dtFil = DbHelper.Query("SELECT Nom FROM dbo.Filieres ORDER BY Nom");
+            foreach (DataRow r in dtFil.Rows)
+            {
+                string nom = Convert.ToString(r["Nom"]) ?? "";
+                if (!string.IsNullOrWhiteSpace(nom))
+                {
+                    _filiere.Items.Add(nom);
+                }
+            }
+        }
+        catch
+        {
+            _filiere.Items.AddRange(["Génie Logiciel", "Informatique", "Marketing", "Réseaux", "Data Science & IA", "Cybersécurité"]);
+        }
+        _filiere.SelectedIndex = _filiere.Items.Count > 1 ? 1 : 0;
 
-        _niveau.Items.AddRange(["L2", "L1", "L3"]);
+        _niveau.Items.Clear();
+        _niveau.Items.AddRange(["Tous", "L1", "L2", "L3"]);
         _niveau.SelectedIndex = 0;
 
         _cours.SelectedIndexChanged += (_, _) => ChargerEtudiants();
@@ -356,6 +430,7 @@ public sealed partial class FrmSaisieAbsences : Form
         string? niveau = Convert.ToString(_niveau.SelectedItem);
         _etudiants = _service.EtudiantsDuCours(coursId, _dateValeur, filiere, niveau);
         _grille.DataSource = _etudiants;
+        MettreAJourCompteur();
     }
 
     private void Enregistrer()

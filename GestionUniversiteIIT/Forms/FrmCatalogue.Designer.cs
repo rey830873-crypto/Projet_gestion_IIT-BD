@@ -4,6 +4,9 @@ public partial class FrmCatalogue : Form
 {
     private readonly DataGridView _grille = new();
     private readonly Label _lblTotal = new();
+    private readonly ComboBox _filtreSecondaire = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly FlowLayoutPanel _pnlResume = new();
+    private readonly Panel _footerHost = new();
     private TextBox _recherche = null!;
 
     private void InitializeComponent()

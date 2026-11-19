@@ -5,6 +5,8 @@ public sealed partial class FrmInscriptions : Form
     private readonly DataGridView _grille = new();
     private readonly ComboBox _annee = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly Label _lblTotal = new();
+    private readonly FlowLayoutPanel _pnlResume = new();
+    private readonly Panel _footerHost = new();
     private TextBox _recherche = null!;
 
     private void InitializeComponent()

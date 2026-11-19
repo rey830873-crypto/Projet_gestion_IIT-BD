@@ -19,12 +19,16 @@ public sealed class AbsenceService
     {
         try
         {
+            string filtre = etudiantFiltre.Trim();
+            bool estNiveau = filtre is "L1" or "L2" or "L3";
+
             var table = DbHelper.Query(
                 """
                 SELECT
                     a.AbsenceId,
                     FORMAT(a.DateCours, 'dd/MM/yyyy') AS [Date],
                     e.Nom + N' ' + e.Prenom AS [Étudiant],
+                    e.Niveau,
                     CASE
                         WHEN c.Code = N'GL101' THEN N'Prog. C#'
                         WHEN c.Code = N'GL102' THEN N'BD (SQL)'
@@ -38,25 +42,27 @@ public sealed class AbsenceService
                 WHERE a.Present = 0
                   AND a.DateCours >= @Debut
                   AND a.DateCours < DATEADD(day, 1, @Fin)
-                  AND (@Recherche = N'' OR @Recherche = N'Tous' OR (e.Nom + N' ' + e.Prenom) LIKE @Filtre OR e.Matricule LIKE @Filtre)
+                  AND (
+                        @Recherche = N'' OR @Recherche = N'Tous'
+                        OR (@EstNiveau = 1 AND e.Niveau = @Recherche)
+                        OR (@EstNiveau = 0 AND ((e.Nom + N' ' + e.Prenom) LIKE @Filtre OR e.Matricule LIKE @Filtre))
+                  )
                 ORDER BY a.DateCours DESC, e.Nom
                 """,
                 new Dictionary<string, object?>
                 {
                     ["@Debut"] = debut.Date,
                     ["@Fin"] = fin.Date,
-                    ["@Recherche"] = etudiantFiltre.Trim(),
-                    ["@Filtre"] = $"%{etudiantFiltre.Trim()}%"
+                    ["@Recherche"] = filtre,
+                    ["@EstNiveau"] = estNiveau ? 1 : 0,
+                    ["@Filtre"] = $"%{filtre}%"
                 });
 
-            if (table.Rows.Count > 0)
-            {
-                return table;
-            }
+            return table;
         }
         catch
         {
-            // Fallback maquette
+            // Fallback maquette uniquement si SQL Server est indisponible
         }
 
         var secours = ObtenirHistoriqueSecours();
@@ -87,6 +93,13 @@ public sealed class AbsenceService
     {
         try
         {
+            string? filNorm = string.IsNullOrWhiteSpace(filiere) || string.Equals(filiere, "Toutes", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : filiere.Trim();
+            string? nivNorm = string.IsNullOrWhiteSpace(niveau) || string.Equals(niveau, "Tous", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : niveau.Trim();
+
             var table = DbHelper.Query(
                 """
                 SELECT
@@ -98,29 +111,25 @@ public sealed class AbsenceService
                 JOIN dbo.Filieres f ON f.FiliereId = e.FiliereId
                 LEFT JOIN dbo.Absences a ON a.CoursId = @CoursId AND a.EtudiantId = e.EtudiantId AND a.DateCours = @Date
                 WHERE e.Actif = 1
-                  AND (@Filiere IS NULL OR @Filiere = N'' OR f.Nom = @Filiere)
-                  AND (@Niveau IS NULL OR @Niveau = N'' OR e.Niveau = @Niveau)
+                  AND (@Filiere IS NULL OR f.Nom = @Filiere)
+                  AND (@Niveau IS NULL OR e.Niveau = @Niveau)
                 ORDER BY e.Matricule
                 """,
                 new Dictionary<string, object?>
                 {
                     ["@CoursId"] = coursId,
                     ["@Date"] = date.Date,
-                    ["@Filiere"] = filiere ?? (object)DBNull.Value,
-                    ["@Niveau"] = niveau ?? (object)DBNull.Value
+                    ["@Filiere"] = filNorm ?? (object)DBNull.Value,
+                    ["@Niveau"] = nivNorm ?? (object)DBNull.Value
                 });
 
-            if (table.Rows.Count > 0)
-            {
-                return table;
-            }
+            return table;
         }
         catch
         {
-            // Fallback maquette
+            // Fallback maquette uniquement si SQL Server est indisponible
+            return ObtenirFeuilleSecours().Copy();
         }
-
-        return ObtenirFeuilleSecours().Copy();
     }
 
     public void EnregistrerPresence(int coursId, DateTime date, DataTable etudiants, string? libelleCours = null)

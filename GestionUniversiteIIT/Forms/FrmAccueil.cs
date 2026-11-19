@@ -164,7 +164,7 @@ public sealed partial class FrmAccueil : Form
                 new Font("Segoe UI", 11f, FontStyle.Bold),
                 new Rectangle(18, 0, 320, header.Height),
                 Color.White,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
         };
 
         _pnlSignalSql.Dock = DockStyle.Right;
@@ -295,68 +295,107 @@ public sealed partial class FrmAccueil : Form
         var home = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.White,
-            Padding = new Padding(26, 18, 26, 22),
+            BackColor = Color.FromArgb(246, 248, 252),
+            Padding = new Padding(24, 16, 24, 20),
             ColumnCount = 1,
             RowCount = 3
         };
-        home.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
-        home.RowStyles.Add(new RowStyle(SizeType.Absolute, 118));
+        UiStyle.AppliquerFondDesign(home);
+        home.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
+        home.RowStyles.Add(new RowStyle(SizeType.Absolute, 114));
         home.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        // 1. En-tête "Bienvenue !" avec badge académique IIT
-        var welcomePanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+        var stats = new StatistiqueService().Charger();
+
+        // 1. En-tête moderne personnalisé avec bouton Actualiser et résumé en direct
+        var welcomePanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
         var badge = new Panel
         {
-            Size = new Size(56, 56),
-            Location = new Point(6, 8),
+            Size = new Size(58, 58),
+            Location = new Point(4, 8),
             BackColor = Color.Transparent
         };
         badge.Paint += (_, e) =>
         {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var darkBlue = new SolidBrush(Color.FromArgb(30, 52, 82));
-            using var red = new SolidBrush(UiStyle.Rouge);
-            using var light = new SolidBrush(Color.FromArgb(236, 242, 250));
-            e.Graphics.FillEllipse(light, 2, 2, 50, 50);
-            e.Graphics.FillPie(darkBlue, 4, 8, 46, 44, 0, 180);
-            e.Graphics.FillEllipse(red, 17, 10, 20, 24);
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            // Ombre douce sous l'emblème
+            var shadowRect = new Rectangle(4, 6, 50, 50);
+            using (var shadowPath = UiStyle.CreerCheminArrondi(shadowRect, 15))
+            using (var shadowBrush = new SolidBrush(Color.FromArgb(28, 15, 23, 42)))
+            {
+                g.FillPath(shadowBrush, shadowPath);
+            }
+
+            // Squircle dégradé bordeaux IIT moderne
+            var mainRect = new Rectangle(3, 3, 50, 50);
+            using (var mainPath = UiStyle.CreerCheminArrondi(mainRect, 15))
+            using (var bgGrad = new LinearGradientBrush(mainRect, Color.FromArgb(204, 18, 28), Color.FromArgb(118, 8, 16), 45f))
+            {
+                g.FillPath(bgGrad, mainPath);
+            }
+
+            // Liseré intérieur subtil
+            var innerRect = new Rectangle(6, 6, 44, 44);
+            using (var innerPath = UiStyle.CreerCheminArrondi(innerRect, 12))
+            using (var innerPen = new Pen(Color.FromArgb(75, 255, 255, 255), 1.1f))
+            {
+                g.DrawPath(innerPen, innerPath);
+            }
+
+            // Icône toque académique minimaliste en haut
+            PointF[] cap = [new(28, 11), new(39, 15.5f), new(28, 20), new(17, 15.5f)];
+            using (var whiteBrush = new SolidBrush(Color.FromArgb(245, 255, 255, 255)))
+            using (var capPen = new Pen(Color.FromArgb(220, 255, 255, 255), 1.4f))
+            {
+                g.FillPolygon(whiteBrush, cap);
+                g.DrawLine(capPen, 39, 15.5f, 39, 22f);
+            }
+
+            // Monogramme "IIT" net et centré
             TextRenderer.DrawText(
-                e.Graphics,
+                g,
                 "IIT",
-                new Font("Segoe UI", 7.5f, FontStyle.Bold),
-                new Rectangle(17, 13, 20, 18),
+                new Font("Segoe UI", 12f, FontStyle.Bold),
+                new Rectangle(4, 22, 48, 26),
                 Color.White,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         };
         welcomePanel.Controls.Add(badge);
 
         welcomePanel.Controls.Add(new Label
         {
-            Text = "Bienvenue !",
+            Text = $"Bonjour, {_utilisateur.NomUtilisateur} !",
             AutoSize = true,
-            Location = new Point(74, 8),
-            Font = new Font("Segoe UI", 19.5f, FontStyle.Bold),
+            Location = new Point(70, 6),
+            Font = new Font("Segoe UI", 18.5f, FontStyle.Bold),
             ForeColor = UiStyle.Texte
         });
         welcomePanel.Controls.Add(new Label
         {
-            Text = "Solution de Gestion Académique – IIT",
+            Text = $"{DateTime.Now:dddd dd MMMM yyyy}  •  {stats.SallesActives} salles actives  •  {stats.CreneauxPlanning} créneaux planifiés  •  {stats.TauxPresence}% assiduité",
             AutoSize = true,
-            Location = new Point(76, 43),
-            Font = new Font("Segoe UI", 10.5f),
-            ForeColor = Color.FromArgb(92, 104, 122)
+            Location = new Point(72, 47),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            ForeColor = Color.FromArgb(100, 116, 139)
         });
+
+        var btnActualiserAccueil = UiStyle.BoutonArdoise("Actualiser", 122, 36);
+        btnActualiserAccueil.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        btnActualiserAccueil.Location = new Point(welcomePanel.Width - 126, 16);
+        welcomePanel.Resize += (_, _) => btnActualiserAccueil.Location = new Point(Math.Max(500, welcomePanel.Width - 126), 16);
+        btnActualiserAccueil.Click += (_, _) => AfficherAccueil();
+        welcomePanel.Controls.Add(btnActualiserAccueil);
         home.Controls.Add(welcomePanel, 0, 0);
 
-        // 2. Quatre cartes KPI colorées (Étudiants, Cours, Enseignants, Inscriptions)
-        var stats = new StatistiqueService().Charger();
+        // 2. Quatre cartes KPI modernes interactives
         var kpiRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 4,
             RowCount = 1,
-            Margin = new Padding(0, 4, 0, 8)
+            Margin = new Padding(0, 4, 0, 10)
         };
         for (int i = 0; i < 4; i++)
         {
@@ -364,44 +403,44 @@ public sealed partial class FrmAccueil : Form
         }
 
         kpiRow.Controls.Add(
-            UiStyle.CarteIndicateur(
+            UiStyle.CarteIndicateurModerne(
                 "Étudiants",
                 stats.Etudiants,
-                Color.FromArgb(30, 124, 218),
-                Color.FromArgb(18, 88, 178),
+                Color.FromArgb(37, 99, 235),
+                Color.FromArgb(29, 78, 216),
                 IconeMenu.Etudiants,
                 valeurAuDessus: false,
                 onClick: () => NaviguerVers(IconeMenu.Etudiants, new FrmEtudiants(OuvrirNouvelleInscription))),
             0, 0);
 
         kpiRow.Controls.Add(
-            UiStyle.CarteIndicateur(
+            UiStyle.CarteIndicateurModerne(
                 "Cours",
                 stats.Cours,
-                Color.FromArgb(214, 34, 40),
-                Color.FromArgb(166, 16, 22),
+                Color.FromArgb(186, 13, 20),
+                Color.FromArgb(140, 10, 16),
                 IconeMenu.Cours,
                 valeurAuDessus: false,
                 onClick: () => NaviguerVers(IconeMenu.Cours, new FrmCours())),
             1, 0);
 
         kpiRow.Controls.Add(
-            UiStyle.CarteIndicateur(
+            UiStyle.CarteIndicateurModerne(
                 "Enseignants",
                 stats.Enseignants,
-                Color.FromArgb(72, 162, 56),
-                Color.FromArgb(44, 126, 32),
+                Color.FromArgb(16, 185, 129),
+                Color.FromArgb(5, 150, 105),
                 IconeMenu.Enseignants,
                 valeurAuDessus: false,
                 onClick: () => NaviguerVers(IconeMenu.Enseignants, new FrmEnseignants())),
             2, 0);
 
         kpiRow.Controls.Add(
-            UiStyle.CarteIndicateur(
+            UiStyle.CarteIndicateurModerne(
                 "Inscriptions",
                 stats.Inscriptions,
-                Color.FromArgb(242, 132, 20),
-                Color.FromArgb(214, 98, 8),
+                Color.FromArgb(245, 158, 11),
+                Color.FromArgb(217, 119, 6),
                 IconeMenu.Inscriptions,
                 valeurAuDessus: false,
                 onClick: OuvrirListeInscriptions),
@@ -409,81 +448,259 @@ public sealed partial class FrmAccueil : Form
 
         home.Controls.Add(kpiRow, 0, 1);
 
-        // 3. Section basse : "Inscriptions par niveau" (gauche) + "Actions rapides" (droite)
+        // 3. Section basse moderne à 3 colonnes : Diagramme Radial Concentrique | Prochains Cours | Actions rapides
         var bottomGrid = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
+            ColumnCount = 3,
             RowCount = 1,
             Margin = new Padding(0, 6, 0, 0)
         };
-        bottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58f));
-        bottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42f));
+        bottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 44f));
+        bottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f));
+        bottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 26f));
 
-        var barChart = new PanneauGraphiqueBarres(stats.InscriptionsL1, stats.InscriptionsL2, stats.InscriptionsL3)
+        var radialChart = new PanneauDiagrammeRadial(
+            stats.RepartitionFilieres,
+            stats.Etudiants,
+            stats.InscriptionsL1,
+            stats.InscriptionsL2,
+            stats.InscriptionsL3)
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(6, 4, 10, 4)
+            Margin = new Padding(4, 4, 8, 4)
         };
-        bottomGrid.Controls.Add(barChart, 0, 0);
+        bottomGrid.Controls.Add(radialChart, 0, 0);
 
+        // Colonne centrale : Aperçu dynamique des prochains créneaux du planning
+        var planningCard = new PanneauArrondi
+        {
+            Dock = DockStyle.Fill,
+            Rayon = 14,
+            CouleurFond = Color.White,
+            CouleurBordure = Color.FromArgb(226, 232, 240),
+            Padding = new Padding(18, 14, 18, 14),
+            Margin = new Padding(8, 4, 8, 4)
+        };
+        var planLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2
+        };
+        planLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        planLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var planHeader = new Panel { Dock = DockStyle.Fill };
+        planHeader.Controls.Add(new Label
+        {
+            Text = "Séances planifiées",
+            AutoSize = true,
+            Location = new Point(0, 4),
+            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+            ForeColor = UiStyle.Texte
+        });
+        var lnkPlanning = new Label
+        {
+            Text = "Voir tout →",
+            AutoSize = true,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Location = new Point(Math.Max(140, planHeader.Width - 88), 8),
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            ForeColor = UiStyle.Rouge,
+            Cursor = Cursors.Hand
+        };
+        planHeader.Resize += (_, _) => lnkPlanning.Location = new Point(Math.Max(140, planHeader.Width - lnkPlanning.Width - 4), 8);
+        lnkPlanning.Click += (_, _) => NaviguerVers(IconeMenu.Planification, new FrmPlanning());
+        planHeader.Controls.Add(lnkPlanning);
+        planLayout.Controls.Add(planHeader, 0, 0);
+
+        var planList = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            BackColor = Color.Transparent
+        };
+
+        try
+        {
+            var dtPlan = new PlanningService().Lister();
+            int maxItems = Math.Min(8, dtPlan.Rows.Count);
+            for (int i = 0; i < maxItems; i++)
+            {
+                var r = dtPlan.Rows[i];
+                string jour = Convert.ToString(r["JourSemaine"]) ?? "";
+                string cours = Convert.ToString(r["Cours"]) ?? "";
+                string salle = Convert.ToString(r["Salle"]) ?? "";
+                string niveau = Convert.ToString(r["Niveau"]) ?? "";
+                string hd = r["HeureDebut"] is TimeSpan ts1 ? $"{ts1.Hours:00}h{ts1.Minutes:00}" : "";
+                string hf = r["HeureFin"] is TimeSpan ts2 ? $"{ts2.Hours:00}h{ts2.Minutes:00}" : "";
+
+                var item = new PanneauArrondi
+                {
+                    Width = Math.Max(220, planList.ClientSize.Width - 10),
+                    Height = 58,
+                    Rayon = 10,
+                    CouleurFond = Color.FromArgb(248, 250, 252),
+                    CouleurBordure = Color.FromArgb(226, 232, 240),
+                    Margin = new Padding(0, 4, 0, 4)
+                };
+                item.Controls.Add(new Label
+                {
+                    Text = cours,
+                    AutoSize = true,
+                    Location = new Point(12, 8),
+                    Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                    ForeColor = UiStyle.Texte
+                });
+                item.Controls.Add(new Label
+                {
+                    Text = $"{jour} • {hd}-{hf} • Salle {salle} ({niveau})",
+                    AutoSize = true,
+                    Location = new Point(12, 31),
+                    Font = new Font("Segoe UI", 8f),
+                    ForeColor = Color.FromArgb(100, 116, 139)
+                });
+                planList.Controls.Add(item);
+            }
+        }
+        catch
+        {
+            planList.Controls.Add(new Label { Text = "Aucun créneau chargé.", AutoSize = true, ForeColor = UiStyle.Gris });
+        }
+
+        planList.Resize += (_, _) =>
+        {
+            foreach (Control c in planList.Controls)
+            {
+                if (c is PanneauArrondi)
+                    c.Width = Math.Max(180, planList.ClientSize.Width - 10);
+            }
+        };
+        planLayout.Controls.Add(planList, 0, 1);
+        planningCard.Controls.Add(planLayout);
+        bottomGrid.Controls.Add(planningCard, 1, 0);
+
+        // Colonne droite : Actions rapides (sans étirement du dernier bouton !)
         var quickCard = new PanneauArrondi
         {
             Dock = DockStyle.Fill,
-            Rayon = 12,
+            Rayon = 14,
             CouleurFond = Color.White,
-            CouleurBordure = Color.FromArgb(222, 226, 235),
-            Padding = new Padding(20, 16, 20, 16),
-            Margin = new Padding(10, 4, 6, 4)
+            CouleurBordure = Color.FromArgb(226, 232, 240),
+            Padding = new Padding(18, 14, 18, 14),
+            Margin = new Padding(8, 4, 4, 4)
         };
 
         var quickLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4
+            RowCount = 6
         };
-        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        quickLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        quickLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         quickLayout.Controls.Add(new Label
         {
             Text = "Actions rapides",
             AutoSize = true,
-            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
             ForeColor = UiStyle.Texte,
-            Margin = new Padding(2, 2, 2, 8)
+            Margin = new Padding(2, 2, 2, 6)
         }, 0, 0);
 
         var btnNouvelleInscription = new BoutonActionRapide("Nouvelle inscription", estPrimaire: true, IconeMenu.Inscriptions)
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(2, 5, 2, 5)
+            Margin = new Padding(2, 4, 2, 4)
         };
         btnNouvelleInscription.Click += (_, _) => OuvrirNouvelleInscription();
 
         var btnPlanifierCours = new BoutonActionRapide("Planifier un cours", estPrimaire: false, IconeMenu.Planification)
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(2, 5, 2, 5)
+            Margin = new Padding(2, 4, 2, 4)
         };
         btnPlanifierCours.Click += (_, _) => NaviguerVers(IconeMenu.Planification, new FrmPlanning());
 
-        var btnSaisirAbsence = new BoutonActionRapide("Saisir une absence", estPrimaire: false, IconeMenu.Etudiants)
+        var btnSaisirAbsence = new BoutonActionRapide("Saisir une absence", estPrimaire: false, IconeMenu.Absences)
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(2, 5, 2, 5)
+            Margin = new Padding(2, 4, 2, 4)
         };
         btnSaisirAbsence.Click += (_, _) => OuvrirSaisieAbsences();
+
+        var btnRapports = new BoutonActionRapide("Analytique & Rapports", estPrimaire: false, IconeMenu.Rapports)
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(2, 4, 2, 4)
+        };
+        btnRapports.Click += (_, _) => NaviguerVers(IconeMenu.Rapports, new FrmStatistiques());
 
         quickLayout.Controls.Add(btnNouvelleInscription, 0, 1);
         quickLayout.Controls.Add(btnPlanifierCours, 0, 2);
         quickLayout.Controls.Add(btnSaisirAbsence, 0, 3);
+        quickLayout.Controls.Add(btnRapports, 0, 4);
+
+        // Carte sombre "État du Campus" en bas des Actions rapides pour occuper l'espace utilement
+        var campusCard = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(2, 12, 2, 2),
+            BackColor = Color.Transparent
+        };
+        campusCard.Paint += (_, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = new Rectangle(0, 0, campusCard.Width - 1, campusCard.Height - 1);
+            if (r.Width <= 20 || r.Height <= 40) return;
+
+            using var path = UiStyle.CreerCheminArrondi(r, 12);
+            using (var bg = new LinearGradientBrush(r, Color.FromArgb(24, 31, 46), Color.FromArgb(52, 16, 26), 40f))
+                g.FillPath(bg, path);
+
+            TextRenderer.DrawText(g, "ÉTAT DU CAMPUS", new Font("Segoe UI", 8f, FontStyle.Bold),
+                new Rectangle(14, 12, r.Width - 28, 18), Color.FromArgb(148, 163, 184),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            TextRenderer.DrawText(g, $"Assiduité : {stats.TauxPresence}%", new Font("Segoe UI", 12.5f, FontStyle.Bold),
+                new Rectangle(14, 34, r.Width - 28, 24), Color.White,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            var barTrack = new Rectangle(14, 64, r.Width - 28, 8);
+            using (var tp = UiStyle.CreerCheminArrondi(barTrack, 4))
+            using (var tb = new SolidBrush(Color.FromArgb(45, 255, 255, 255)))
+                g.FillPath(tb, tp);
+
+            int fillW = Math.Max(10, (int)Math.Round(barTrack.Width * (stats.TauxPresence / 100.0)));
+            using (var fp = UiStyle.CreerCheminArrondi(new Rectangle(barTrack.X, barTrack.Y, fillW, barTrack.Height), 4))
+            using (var fb = new SolidBrush(Color.FromArgb(52, 211, 153)))
+                g.FillPath(fb, fp);
+
+            TextRenderer.DrawText(g, $"•  {stats.SallesActives} salles disponibles", new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(14, 84, r.Width - 28, 20), Color.FromArgb(226, 232, 240),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            TextRenderer.DrawText(g, $"•  {stats.CreneauxPlanning} créneaux planifiés", new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                new Rectangle(14, 106, r.Width - 28, 20), Color.FromArgb(226, 232, 240),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+            TextRenderer.DrawText(g, $"•  Session : {_utilisateur.NomUtilisateur} ({_utilisateur.Role})", new Font("Segoe UI", 8.5f),
+                new Rectangle(14, 128, r.Width - 28, 20), Color.FromArgb(148, 163, 184),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        };
+        quickLayout.Controls.Add(campusCard, 0, 5);
         quickCard.Controls.Add(quickLayout);
 
-        bottomGrid.Controls.Add(quickCard, 1, 0);
+        bottomGrid.Controls.Add(quickCard, 2, 0);
         home.Controls.Add(bottomGrid, 0, 2);
 
         AfficherPanneau(home);
@@ -583,7 +800,7 @@ public sealed partial class FrmAccueil : Form
                 new Font("Segoe UI", 11f, FontStyle.Bold | FontStyle.Italic),
                 new Rectangle(92, 22, 120, 24),
                 Color.FromArgb(255, 246, 247),
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
 
             var pillRect = new Rectangle(28, 49, 170, 26);
             using (var pillPath = UiStyle.CreerCheminArrondi(pillRect, 12))
@@ -737,7 +954,7 @@ public sealed partial class FrmAccueil : Form
                 Font,
                 new Rectangle(48, 0, Width - 56, Height),
                 _estPrimaire ? Color.White : UiStyle.Texte,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
         }
     }
 }

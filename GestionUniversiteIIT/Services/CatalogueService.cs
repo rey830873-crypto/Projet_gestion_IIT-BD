@@ -307,7 +307,7 @@ public sealed class CatalogueService
                 "créneaux",
                 5,
                 1,
-                "SELECT p.PlanningId, c.Code, c.Libelle AS Cours, f.Nom AS [Filière], p.Niveau, p.JourSemaine, p.HeureDebut, p.HeureFin, s.Code AS Salle FROM dbo.Plannings p JOIN dbo.Cours c ON c.CoursId = p.CoursId JOIN dbo.Filieres f ON f.FiliereId = p.FiliereId JOIN dbo.Salles s ON s.SalleId = p.SalleId ORDER BY p.HeureDebut, p.JourSemaine",
+                "SELECT p.PlanningId, c.Code, c.Libelle AS Cours, f.Nom AS [Filière], p.Niveau, p.JourSemaine, p.HeureDebut, p.HeureFin, s.Code AS Salle, ISNULL(en.Nom + N' ' + en.Prenom, N'') AS Enseignant FROM dbo.Plannings p JOIN dbo.Cours c ON c.CoursId = p.CoursId JOIN dbo.Filieres f ON f.FiliereId = p.FiliereId JOIN dbo.Salles s ON s.SalleId = p.SalleId LEFT JOIN dbo.Enseignants en ON en.EnseignantId = c.EnseignantId ORDER BY p.HeureDebut, p.JourSemaine",
                 "SELECT CoursId, SalleId, JourSemaine, HeureDebut, HeureFin, FiliereId, Niveau FROM dbo.Plannings WHERE PlanningId = @Id",
                 "INSERT dbo.Plannings(CoursId, SalleId, JourSemaine, HeureDebut, HeureFin, FiliereId, Niveau) VALUES(@CoursId, @SalleId, @JourSemaine, @HeureDebut, @HeureFin, @FiliereId, @Niveau)",
                 "UPDATE dbo.Plannings SET CoursId = @CoursId, SalleId = @SalleId, JourSemaine = @JourSemaine, HeureDebut = @HeureDebut, HeureFin = @HeureFin, FiliereId = @FiliereId, Niveau = @Niveau WHERE PlanningId = @Id",
